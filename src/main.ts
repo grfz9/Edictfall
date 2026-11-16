@@ -113,7 +113,16 @@ export class Game {
     if (this.state === 'play') {
       const origins = w.players.map((p) => this.renderer.worldToScreen(p.x, p.y));
       const inputs = this.input.poll(dt, w.players.length, origins, !!w.focus[0]);
-      w.players.forEach((p, i) => { p.input = this.bot && i === 0 ? botInput(w, p) : inputs[i] ?? p.input; });
+      // Les fronts montants (ramasser, compétence, changer d'arme, clic) sont conservés jusqu'à ce qu'un pas
+      // de simulation les consomme : sinon, sur un écran > 60 Hz, une image sans pas de simulation les perdait.
+      w.players.forEach((p, i) => {
+        const prev = p.input;
+        const next = this.bot && i === 0 ? botInput(w, p) : inputs[i] ?? prev;
+        if (prev && next !== prev) {
+          next.swap ||= prev.swap; next.interact ||= prev.interact; next.skill ||= prev.skill; next.firePressed ||= prev.firePressed;
+        }
+        p.input = next;
+      });
       if (this.bot && w.choice) w.pick(0);
       // coop : dans le hall, le héros de J2 suit ses changements
       if (w.mode === 'hub' && w.players[1]) this.coopHero = w.players[1].hero.id;

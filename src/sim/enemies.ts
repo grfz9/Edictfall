@@ -49,6 +49,7 @@ export function spawnEnemy(w: World, id: string | EnemyDef, x: number, y: number
     spawnT: o.delay ?? 0.7, age: 0, target: null, charmed: o.charmed, data: {},
   };
   resetAttackTimers(w, e);
+  if (def.boss) { const P = def.boss.phases[0]; e.data.look = { sprite: P.sprite, scale: P.scale, tint: P.tint, aura: P.aura }; }
   w.enemies.push(e);
   if (def.onSpawn) def.onSpawn(w.ctx, e);
   w.rules.emit('onEnemySpawn', e);
@@ -209,6 +210,7 @@ export function updateEnemies(w: World, dt: number): void {
         w.fx.push({ t: 'banner', title: `PHASE ${ph + 1}`, sub: e.def.name, color: '#ff5577' });
         // nettoie les balles ennemies pour une transition lisible
         for (const b of w.bullets) if (b.team === 'enemy') b.dead = true;
+        e.data.look = { sprite: P.sprite, scale: P.scale, tint: P.tint, aura: P.aura };
         if (P.onEnter) P.onEnter(w.ctx, e);
       }
     }

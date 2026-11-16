@@ -155,6 +155,8 @@ export class Input {
       if (b(7) || b(5) || b(0)) into.fire = true;
       if (edge(7) || edge(5) || edge(0)) { into.firePressed = true; if (slot === 0 && count === 1) this.device = 'pad'; }
       if (edge(2)) into.interact = true;
+      // A ramasse/interagit aussi quand un objet est à portée (plus besoin de chercher X).
+      if (edge(0) && slot === 0 && focus) into.interact = true;
       if (edge(3)) into.swap = true;
       if (edge(1) || edge(4) || edge(6)) into.skill = true;
       if (edge(9)) this.onPause();

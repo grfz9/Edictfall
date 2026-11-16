@@ -195,6 +195,11 @@ export interface BossPhase {
   speed?: number;
   attacks: AttackSpec[];
   onEnter?: (ctx: Ctx, e: Enemy) => void;
+  /** Apparence propre à cette phase (sprite, échelle visuelle, teinte 0xRRGGBB, aura colorée autour du boss). */
+  sprite?: string;
+  scale?: number;
+  tint?: number;
+  aura?: number;
 }
 export interface EnemyDef {
   id: string;

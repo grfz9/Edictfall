@@ -324,14 +324,18 @@ export class Renderer {
       const tele = e.tele > 0 || e.data.windup > 0;
       const blink = tele && Math.floor(time * 20) % 2 === 0;
       const moving = Math.abs(e.vx) + Math.abs(e.vy) > 4;
-      this.setTex(s, e.def.sprite, moving ? Math.floor(time * 6 + e.id) : Math.floor(time * 2.5 + e.id), e.flash > 0 || blink);
+      const look = e.data.look;
+      if (look?.aura !== undefined) under.circle(e.x, e.y, r * 1.6 + Math.sin(time * 5) * 2).fill({ color: look.aura, alpha: 0.18 + Math.sin(time * 7) * 0.06 });
+      this.setTex(s, look?.sprite && this.tex.has(look.sprite) ? look.sprite : e.def.sprite, moving ? Math.floor(time * 6 + e.id) : Math.floor(time * 2.5 + e.id), e.flash > 0 || blink);
       const sq = 1 + Math.sin(time * 7 + e.id) * 0.04;
-      s.scale.set(e.scale * e.facing, e.scale * sq);
+      const ls = look?.scale ?? 1;
+      s.scale.set(e.scale * ls * e.facing, e.scale * ls * sq);
       s.position.set(e.x, e.y - (moving ? Math.abs(Math.sin(time * 9 + e.id)) * 1.5 : 0));
       s.zIndex = e.y + r * 0.5;
       let tint = 0xffffff;
       for (const k in e.status) { tint = STATUS_TINT[k] ?? tint; }
       if (e.charmed) tint = 0xff90d0;
+      else if (tint === 0xffffff && look?.tint !== undefined) tint = look.tint;
       s.tint = tint;
       if (tele) this.label('!', e.x, e.y - r - 9, 0xff4455);
     }
