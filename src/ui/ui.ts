@@ -1,9 +1,16 @@
-// Interface DOM : orchestre HUD, bannières, choix d'édits et menus. Lit l'état du jeu, n'écrit que via Game/World.
+// Interface DOM : orchestre HUD, bannières, choix d'édits, menus, dialogues, bulles et cinématiques.
+// Lit l'état du jeu, n'écrit que via Game/World.
 import type { Game } from '../main';
+import type { DialogLine } from '../core/types';
 import { Hud } from './hud';
 import { Banners } from './banners';
 import { ChoiceView } from './choice';
 import { Menus } from './menus';
+import { DialogView } from './dialog';
+import { Bubbles } from './bubbles';
+import { Cinematic } from './cinematic';
+import { PadNav, type PadAction } from './padnav';
+import { INTRO, ENDING, INTERLUDES } from '../content/story/lore';
 
 export class UI {
   private root: HTMLElement;
@@ -11,6 +18,10 @@ export class UI {
   private banners: Banners;
   private choice: ChoiceView;
   private menus: Menus;
+  readonly dialog: DialogView;
+  private bubbles: Bubbles;
+  readonly cine: Cinematic;
+  private padnav = new PadNav();
   private tip: HTMLElement;
   private tipFor: HTMLElement | null = null;
   private touchDev = false;
@@ -22,15 +33,18 @@ export class UI {
     this.banners = new Banners();
     this.choice = new ChoiceView(game, () => this.sync());
     this.menus = new Menus(game, () => this.sync());
+    this.dialog = new DialogView(game, () => this.sync());
+    this.bubbles = new Bubbles(game);
+    this.cine = new Cinematic(game, () => this.sync());
     this.tip = document.createElement('div');
     this.tip.id = 'tip';
     this.tip.setAttribute('role', 'tooltip');
     const rotate = document.createElement('div');
     rotate.id = 'rotate';
     rotate.innerHTML = '<span class="ph-ic" aria-hidden="true"></span>Tourne ton téléphone pour jouer en paysage';
-    this.root.append(this.hud.el, this.banners.el, this.choice.el, this.menus.el, this.tip, rotate);
+    this.root.append(this.hud.el, this.bubbles.el, this.banners.el, this.choice.el, this.dialog.el, this.menus.el, this.cine.el, this.tip, rotate);
 
-    // Écouteur en capture : passe avant celui de input.ts pour les menus et le choix d'édit.
+    // Écouteur en capture : passe avant celui de input.ts pour les menus, dialogues et le choix d'édit.
     window.addEventListener('keydown', (e) => this.onKey(e), true);
     // Infobulles : survol à la souris, tap au toucher (tap ailleurs pour fermer).
     this.root.addEventListener('pointerover', (e) => {
@@ -63,28 +77,76 @@ export class UI {
     this.root.dataset.state = s;
     this.hideTip();
     if (s !== 'play') this.hud.reset();
+    // victoire en mode Histoire : la fin narrative passe avant le récapitulatif
+    const sum = this.game.world.summary as (NonNullable<Game['world']['summary']> & { played?: boolean }) | null;
+    if (s === 'end' && sum?.ending && !sum.played) {
+      sum.played = true;
+      this.menus.show('play');
+      this.cine.play(ENDING, () => { if (this.game.state === 'end') { this.menus.show('end'); this.sync(); } });
+      this.sync();
+      return;
+    }
     this.menus.show(s);
     this.sync();
+    this.padnav.sync();
   }
 
   openPanel(type: string): void {
     this.hideTip();
+    if (type === 'intro') { this.playIntro(); return; }
     this.menus.openPanel(type);
     this.sync();
+    this.padnav.sync();
   }
 
-  /** Un panneau est ouvert : la simulation doit ignorer les entrées. */
-  get blocking(): boolean { return !!this.menus.panel; }
+  /** Cinématique d'introduction (premier lancement, ou rejouée depuis le hall / le titre). */
+  playIntro(done: () => void = () => {}): void {
+    this.cine.play(INTRO, () => {
+      const f = (this.game.save.flags ??= {});
+      f.introSeen = true;
+      this.game.world.persist();
+      done();
+    });
+    this.padnav.sync();
+  }
+  /** Intermède entre deux mondes (mode Histoire). */
+  playScene(id: number): void {
+    const lines: DialogLine[] | undefined = INTERLUDES[id];
+    if (lines) this.dialog.play({ lines });
+  }
+
+  /** Un écran recouvre le jeu : la simulation doit ignorer les entrées. */
+  get blocking(): boolean { return !!this.menus.panel || this.dialog.open || this.cine.open; }
 
   frame(dt: number): void {
     const g = this.game;
     this.menus.update(dt);
     const touch = g.input.device === 'touch';
     if (touch !== this.touchDev) { this.touchDev = touch; this.root.classList.toggle('touch-dev', touch); }
-    this.choice.update(dt, !!this.menus.panel);
-    this.banners.update(dt, g.state === 'play' && !this.choice.open && !this.menus.panel);
+    this.pad(dt);
+    this.cine.update(dt);
+    this.dialog.update(dt);
+    const covered = !!this.menus.panel || this.cine.open;
+    this.choice.update(dt, covered || this.dialog.open);
+    this.banners.update(dt, g.state === 'play' && !this.choice.open && !covered && !this.dialog.open);
+    this.bubbles.update((g.state === 'play' || g.state === 'pause') && !covered);
     if (g.state === 'play' || g.state === 'pause') this.hud.update(dt);
     if (this.tipFor && !this.tipFor.isConnected) this.hideTip();
+  }
+
+  // ------------------------------------------------------------------ manette dans l'interface
+  private pad(dt: number): void {
+    const acts = this.padnav.poll(dt);
+    if (!acts.length) return;
+    const g = this.game;
+    for (const a of acts) {
+      if (this.cine.open) { this.cine.pad(a); continue; }
+      if (this.menus.modalOpen || this.menus.panel || (this.menus.active && g.state !== 'play')) { this.menus.pad(a); continue; }
+      if (this.dialog.open) { this.dialog.pad(a); continue; }
+      // en jeu : B / Start passent par input.ts (compétence, pause), rien à faire ici
+      if (a === 'start' && g.state === 'pause') g.setState('play');
+    }
+    if (acts.length) { g.input.device = 'pad'; this.padnav.sync(); }
   }
 
   // ------------------------------------------------------------------ interne
@@ -92,23 +154,29 @@ export class UI {
   private sync(): void {
     const g = this.game;
     this.root.classList.toggle('choice-open', this.choice.open);
-    this.root.classList.toggle('panel-open', !!this.menus.panel);
+    this.root.classList.toggle('panel-open', !!this.menus.panel || this.cine.open);
+    this.root.classList.toggle('dialog-open', this.dialog.open);
     this.root.classList.toggle('menu-open', this.menus.active);
-    g.input?.setTouchActive(g.state === 'play' && !this.choice.open && !this.menus.panel);
+    this.root.classList.toggle('cine-open', this.cine.open);
+    g.input?.setTouchActive(g.state === 'play' && !this.choice.open && !this.blocking);
   }
 
   private onKey(e: KeyboardEvent): void {
     const g = this.game;
+    const eat = () => { e.preventDefault(); e.stopPropagation(); };
+    if (this.cine.open) { if (this.cine.key(e)) eat(); return; }
+    if (this.menus.modalOpen) { if (e.code === 'Escape' ? this.menus.escape() : this.menus.key(e)) eat(); return; }
+    if (this.dialog.open && !this.menus.panel && (g.state === 'play' || !this.menus.active)) { if (this.dialog.key(e)) eat(); return; }
     if (this.choice.open && g.state === 'play' && !this.menus.panel) {
-      if (this.choice.key(e)) { e.preventDefault(); e.stopPropagation(); }
+      if (this.choice.key(e)) eat();
       return;
     }
     if (e.code === 'Escape') {
-      if (this.menus.escape()) { e.preventDefault(); e.stopPropagation(); }
+      if (this.menus.escape()) eat();
       return;
     }
     if (this.menus.active) {
-      if (this.menus.key(e)) { e.preventDefault(); e.stopPropagation(); }
+      if (this.menus.key(e)) eat();
       return;
     }
     const tag = (e.target as HTMLElement)?.tagName;
@@ -135,5 +203,3 @@ export class UI {
     this.tip.classList.remove('on');
   }
 }
-
-

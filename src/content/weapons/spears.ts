@@ -11,14 +11,14 @@ import { spr, dist } from './_helpers';
 spr('b_javelin', ['.........2.', 'nnnnnnnnn22', '.........2.']);
 spr('b_harpoon', ['.......a.a', 'NNNNNNNaa1', '.......a.a']);
 
-spr('w_spear_pitchfork', ['............333', 'nnnnnnnnnnn3...', 'NNNNNNNNNNN3333', '............333'], { ox: 3, oy: 2 });
+spr('w_spear_pitchfork', ['............a22..', '............a....', 'NnNnNnNnNnNnaa221', '............a....', '............a22..'], { ox: 3, oy: 2 });
 defineWeapon({
   id: 'spear_pitchfork', name: 'Fourche de fermier', desc: 'Trois dents, aucune pitié, foin compris.', rarity: 0, type: 'spear',
   sprite: 'w_spear_pitchfork', energy: 0, cooldown: 0.45, damage: 9, sfx: 'swing',
   bullet: { kind: 'slash', range: 42, arc: 0.5, knockback: 70, color: 0xd8c090 },
 });
 
-spr('w_spear_javelin', ['.............2.', 'nnnnnnnnnnnn222', '.............2.'], { ox: 5, oy: 1 });
+spr('w_spear_javelin', ['.............22..', 'nNnNnNnNnNnNa2221', '.............22..'], { ox: 5, oy: 1 });
 defineWeapon({
   id: 'spear_javelin', name: 'Javelot d\'entraînement', desc: 'Lancer, ramasser, recommencer. Surtout lancer.', rarity: 1, type: 'spear',
   sprite: 'w_spear_javelin', energy: 2, cooldown: 0.45, damage: 12, recoil: 4, shake: 0.6, sfx: 'swing', casing: false, muzzle: 0,

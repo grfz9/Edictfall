@@ -1,12 +1,20 @@
 // Ctx : l'API que reçoivent TOUS les scripts de contenu (règles, armes, ennemis, héros, patterns).
 // C'est la seule surface dont le contenu a besoin ; elle ne dépend ni du rendu ni du DOM.
-import type { BulletSpec, Bullet, Enemy, Player, Team, StatusKind, PickupKind, ModifierDef, Room, Mods, WeaponInst, Interactable, Entity } from '../core/types';
+import type { BulletSpec, Bullet, Enemy, Player, Team, StatusKind, PickupKind, ModifierDef, Room, Mods, WeaponInst, Interactable, Entity, Dialog, RunMode } from '../core/types';
 import type { Rng } from '../core/rng';
 import type { ModStack } from '../core/mods';
 import { spawnBullet, explode, damageEnemy, damagePlayer, addStatus, makeWeapon } from './combat';
 import { spawnEnemy, type SpawnOpts } from './enemies';
 import type { World } from './world';
 import { T, TILE, tileAt } from './dungeon';
+
+/** Pacte : effet persistant pour la run (marchés de Wassim, salles spéciales…), appliqué à chaque frame. */
+export interface Pact {
+  id: string;
+  name: string;
+  desc: string;
+  modify?: (m: Mods, ctx: Ctx) => void;
+}
 
 export class Ctx {
   constructor(public world: World) {}
@@ -122,6 +130,27 @@ export class Ctx {
   flash(color: number, a = 0.3): void { this.world.fx.push({ t: 'flash', color, a }); }
   ring(x: number, y: number, r: number, color: number): void { this.world.fx.push({ t: 'ring', x, y, r, color }); }
   banner(title: string, sub?: string, color?: string): void { this.world.fx.push({ t: 'banner', title, sub, color }); }
+
+  // ---------------------------------------------------------------- modes, PNJ, pactes
+  /** Mode de la run en cours. */
+  get mode(): RunMode { return this.world.runMode; }
+  /** Ajoute un pacte (effet permanent pour la run ; même id = remplacé). */
+  addPact(p: Pact): void { this.world.addPact(p); }
+  hasPact(id: string): boolean { return this.world.pacts.some((p) => p.id === id); }
+  /** Donne un édit (règle) comme si on l'avait choisi. */
+  grantRule(id: string): boolean { const d = this.world.reg.mods.get(id); if (!d) return false; const n = this.world.rules.list.length; this.world.takeMod(d); return this.world.rules.list.length > n || this.world.rules.has(id); }
+  /** Offre un choix d'édit supplémentaire. */
+  offerRules(title?: string, sub?: string): void { this.world.offerRules(title, sub); }
+  /** Crée une instance d'arme sans l'équiper. */
+  makeWeapon(id: string, rarity?: number): WeaponInst | null { return makeWeapon(this.world, id, rarity); }
+  /** Change le héros d'un joueur (garde armes, PV en proportion). */
+  swapHero(p: Player, heroId: string): boolean { return this.world.swapHero(p, heroId); }
+  /** Passe à l'étage suivant (après un court délai). */
+  skipFloor(): void { this.after(0.6, () => { if (this.world.mode === 'run') this.world.nextFloor(); }); }
+  /** Bulle de dialogue au-dessus d'une entité ou d'un point. */
+  say(target: { x: number; y: number }, text: string, dur = 3): void { this.world.say(target, text, dur); }
+  /** Ouvre la boîte de dialogue (met la simulation en pause). */
+  dialog(d: Dialog): void { this.world.openDialog(d); }
 
   /** Appelé par le moteur quand une synergie s'active. */
   onSynergy(def: ModifierDef): void {

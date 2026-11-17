@@ -18,6 +18,8 @@ export interface AtlasEntry {
   ay: number;
   w: number;
   h: number;
+  /** Couleur dominante (0xRRGGBB). */
+  color: number;
 }
 export interface Atlas {
   canvas: HTMLCanvasElement;
@@ -52,8 +54,66 @@ function builtinSprites(): SpriteDef[] {
     { id: 'px', px: ['1'], outline: false },
     { id: 'missing', px: ['mkmk', 'kmkm', 'mkmk', 'kmkm'], outline: false },
     { id: 'shadow', px: ['..kkkkkk..', '.kkkkkkkk.', 'kkkkkkkkkk', '.kkkkkkkk.', '..kkkkkk..'], outline: false },
+    // --- effets du renderer (blancs/clairs : teintés à l'affichage)
+    // flash de bouche : pointe vers la droite, ancre à gauche
+    {
+      id: 'fx_muzzle', ox: 0, oy: 3, outline: false,
+      px: ['...1.....', '.1.11..1.', '..11111..', '111111111', '..11111..', '.1.11..1.', '...1.....'],
+      frames: [
+        ['.........', '..1...1..', '..1111...', '11111111.', '..1111...', '..1...1..', '.........'],
+        ['.........', '.........', '...11....', '1111111..', '...11....', '.........', '.........'],
+      ],
+    },
+    // douilles : laiton / cartouche rouge
+    { id: 'fx_casing', px: ['y1Y', 'YYN'], outline: '#2a1a10' },
+    { id: 'fx_shell', px: ['yrrR', 'YRRR'], outline: '#2a1a10' },
+    // flammes de torche (4 frames), ancre à la base
+    {
+      id: 'fx_flame', oy: 7, outline: false,
+      px: ['..y..', '..y..', '.yoy.', '.y1o.', 'oy1yo', 'oy1yv', '.vyv.', '..V..'],
+      frames: [
+        ['.y...', '.yy..', '.yoy.', 'oy1y.', 'oy1yo', '.y1yv', '.vyv.', '..V..'],
+        ['...y.', '..yy.', '.yoy.', '.y1yo', 'oy1yo', 'oy1y.', '.vyv.', '..V..'],
+        ['.....', '..y..', '.yyy.', '.y1o.', 'oy11o', 'oy1yv', '.vyv.', '..V..'],
+      ],
+    },
+    {
+      id: 'fx_wisp', oy: 7, outline: false,
+      px: ['..i..', '..c..', '.cic.', '.c1C.', 'Cc1cC', 'Cc1cb', '.bcb.', '..B..'],
+      frames: [
+        ['.i...', '.cc..', '.cic.', 'Cc1c.', 'Cc1cC', '.c1cb', '.bcb.', '..B..'],
+        ['...i.', '..cc.', '.cic.', '.c1cC', 'Cc1cC', 'Cc1c.', '.bcb.', '..B..'],
+        ['.....', '..c..', '.ccc.', '.c1C.', 'Cc11C', 'Cc1cb', '.bcb.', '..B..'],
+      ],
+    },
+    // lanterne de la forêt (verre jaune-vert qui vacille)
+    {
+      id: 'fx_lantern', oy: 1,
+      px: ['..d..', '.ddd.', 'dlyld', 'dy1yd', 'dlyld', '.ddd.'],
+      frames: [['..d..', '.ddd.', 'dyyld', 'dl1yd', 'dyyld', '.ddd.'], ['..d..', '.ddd.', 'dlyyd', 'dy1ld', 'dlyyd', '.ddd.']],
+      pal: { d: '#2c2018' },
+    },
+    // étincelle (4 branches)
+    { id: 'fx_spark', px: ['.1.', '111', '.1.'], outline: false },
+    { id: 'fx_star', px: ['..1..', '..1..', '11111', '..1..', '..1..'], outline: false },
     ...fontSprites(),
   ];
+}
+
+/** Couleur dominante d'un sprite (hors contour, blanc, noir) — pour les éclats, traînées, dissolutions. */
+function dominantColor(def: SpriteDef): number {
+  const count = new Map<string, number>();
+  for (const row of def.px)
+    for (const ch of row) {
+      if (ch === '.' || ch === ' ' || ch === '0' || ch === '1' || ch === 'k' || ch === 'w' || ch === '5') continue;
+      count.set(ch, (count.get(ch) ?? 0) + 1);
+    }
+  let best = '', bn = 0;
+  for (const [ch, n] of count) if (n > bn) { bn = n; best = ch; }
+  const hex = best ? ((def.pal && def.pal[best]) ?? PAL[best]) : undefined;
+  if (!hex) return 0xffffff;
+  const [r, g, b] = hexToRgb(hex);
+  return (r << 16) | (g << 8) | b;
 }
 
 interface Raster {
@@ -118,7 +178,7 @@ export function buildAtlas(): Atlas {
     const sw = Math.max(...def.px.map((r) => r.length)), sh = def.px.length;
     const w = sw + pad * 2, h = sh + pad * 2;
     meta.set(def.id, {
-      frames: [], flash: [], w, h,
+      frames: [], flash: [], w, h, color: dominantColor(def),
       ax: def.ox !== undefined ? (def.ox + pad) / w : 0.5,
       ay: def.oy !== undefined ? (def.oy + pad) / h : 0.5,
     });

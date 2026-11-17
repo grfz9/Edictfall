@@ -207,7 +207,7 @@ export function updateEnemies(w: World, dt: number): void {
         w.fx.push({ t: 'ring', x: e.x, y: e.y, r: 70, color: 0xff4466 });
         w.fx.push({ t: 'shake', a: 7 });
         w.fx.push({ t: 'sfx', id: 'phase' });
-        w.fx.push({ t: 'banner', title: `PHASE ${ph + 1}`, sub: e.def.name, color: '#ff5577' });
+        if (!P.onEnter) w.fx.push({ t: 'banner', title: `PHASE ${ph + 1}`, sub: e.def.name, color: '#ff5577' });
         // nettoie les balles ennemies pour une transition lisible
         for (const b of w.bullets) if (b.team === 'enemy') b.dead = true;
         e.data.look = { sprite: P.sprite, scale: P.scale, tint: P.tint, aura: P.aura };

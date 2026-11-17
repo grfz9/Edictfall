@@ -7,7 +7,8 @@ import { World, emptyInput } from '../src/sim/world';
 import { botInput } from '../src/sim/bot';
 import type { Player } from '../src/core/types';
 
-const HEROES = ['brann', 'oriane', 'gribouille', 'vesna', 'tamsin', 'bouldre'];
+// ordre croissant de coût
+const HEROES = ['brann', 'oriane', 'gribouille', 'vesna', 'zephine', 'tamsin', 'sabbatine', 'bouldre', 'ferrokan', 'croasimir'];
 const MY_PASSIVES = () => allPassives().filter((d) => d.id.startsWith('p_') && d.icon.startsWith('ip_'));
 
 function checkSprite(id: string): void {
@@ -58,7 +59,7 @@ function step(w: World, n = 1): void {
 }
 
 describe('contenu héros / passifs / familiers', () => {
-  it('6 héros, sprites et textes valides', () => {
+  it('10 héros, sprites et textes valides', () => {
     expect([...R.heroes.keys()].sort()).toEqual([...HEROES].sort());
     const costs = HEROES.map((id) => R.heroes.get(id)!.cost);
     expect(costs[0]).toBe(0);
@@ -66,6 +67,11 @@ describe('contenu héros / passifs / familiers', () => {
     for (const id of HEROES) {
       const h = R.heroes.get(id)!;
       checkSprite(h.sprite);
+      checkSprite(h.sprite + '_idle');
+      const sp = R.sprites.get(h.sprite)!;
+      expect(sp.frames?.length, h.id + ' : 4 frames de marche').toBe(3);
+      expect(sp.px[0], h.id + ' : ligne 0 vide (respiration)').toMatch(/^\.+$/);
+      expect(h.cost).toBeLessThanOrEqual(250);
       expect(R.weapons.has(h.weapon)).toBe(true);
       expect(h.skill.desc.length).toBeLessThanOrEqual(70);
       expect(h.skill.name.length).toBeLessThanOrEqual(70);
@@ -157,6 +163,86 @@ describe('contenu héros / passifs / familiers', () => {
     p.hp = 2; p.invuln = 5;
     triggerSkill(w, p);
     expect(p.hp).toBeGreaterThanOrEqual(4);
+  });
+
+  it('croasimir : la langue avale un petit ennemi', () => {
+    const w = makeWorld('FX-croa', 'croasimir'); const p = w.players[0];
+    while (w.choice) w.pick(0);
+    for (const e of w.enemies) e.dead = true;
+    p.aim = 0; p.armor = 0; w.save.options.autoAim = false;
+    const e = w.ctx.spawnEnemy('dummy', p.x + 60, p.y, { delay: 0 })!;
+    e.hp = 20; e.maxHp = 20;
+    triggerSkill(w, p);
+    expect(p.data.tongue).toBe(e.id);
+    step(w, 40);
+    expect(e.dead).toBe(true);
+    expect(p.armor).toBeGreaterThanOrEqual(1);
+  });
+
+  it('croasimir : un gros ennemi est « ajourné » (dégâts + gel), une langue dans le vide recharge vite', () => {
+    const w = makeWorld('FX-croa2', 'croasimir'); const p = w.players[0];
+    while (w.choice) w.pick(0);
+    for (const e of w.enemies) e.dead = true;
+    p.aim = 0; w.save.options.autoAim = false;
+    const e = w.ctx.spawnEnemy('dummy', p.x + 60, p.y, { delay: 0 })!;
+    const hp = e.hp;
+    triggerSkill(w, p);
+    expect(e.dead).toBe(false);
+    expect(e.hp).toBeLessThan(hp);
+    e.dead = true; step(w, 30);
+    p.skillCd = 0; p.aim = Math.PI / 2;
+    triggerSkill(w, p);
+    expect(p.skillCd).toBeLessThan(w.players[0].hero.skill.cooldown * 0.5);
+  });
+
+  it('croasimir : pattes palmées, les sols piégés ne blessent pas', () => {
+    const w = makeWorld('FX-croa3', 'croasimir'); const p = w.players[0];
+    while (w.choice) w.pick(0);
+    const f = w.floor, i = Math.floor(p.x / 16) + Math.floor(p.y / 16) * f.w;
+    f.tiles[i] = 5; // T.HAZARD
+    const hp = p.hp, armor = p.armor;
+    for (let k = 0; k < 120; k++) { if (w.choice) w.pick(0); p.input = emptyInput(); p.x = (i % f.w) * 16 + 8; p.y = Math.floor(i / f.w) * 16 + 8; w.update(1 / 60); }
+    expect(p.hp + p.armor).toBe(hp + armor);
+    expect(p.mods.invulnTime).toBeGreaterThan(1.2);
+  });
+
+  it('zephine : trois bordées de chaque côté', () => {
+    const w = makeWorld('FX-zeph', 'zephine'); const p = w.players[0];
+    while (w.choice) w.pick(0);
+    const mine = () => w.bullets.filter((b) => b.team === 'player' && b.sprite === 'b_big').length;
+    triggerSkill(w, p);
+    expect(mine()).toBe(8);
+    let max = 0, total = 0, prev = mine();
+    for (let i = 0; i < 70; i++) { step(w); const n = mine(); if (n > prev) total += n - prev; prev = n; max = Math.max(max, n); }
+    expect(total).toBe(16); // 2 salves de plus
+    expect(p.mods.coinMult).toBeGreaterThan(1.2);
+  });
+
+  it('ferrokan : la garde renvoie les balles puis coupe', () => {
+    const w = makeWorld('FX-ferro', 'ferrokan'); const p = w.players[0];
+    while (w.choice) w.pick(0);
+    triggerSkill(w, p);
+    const b = w.ctx.spawnBullet({ damage: 1, speed: 1, sprite: 'eb_round' }, p.x + 20, p.y, Math.PI, 'enemy', null)!;
+    const e = w.ctx.spawnEnemy('dummy', p.x - 30, p.y, { delay: 0 })!;
+    step(w);
+    expect(b.team).toBe('player');
+    expect(p.invuln).toBeGreaterThan(0);
+    const before = w.stats.damage;
+    step(w, 40);
+    expect(w.stats.damage).toBeGreaterThan(before);
+    expect(e).toBeTruthy();
+  });
+
+  it('sabbatine : ondes au rythme, drop au 4e temps', () => {
+    const w = makeWorld('FX-sab', 'sabbatine'); const p = w.players[0];
+    while (w.choice) w.pick(0);
+    w.ctx.spawnEnemy('dummy', p.x + 30, p.y, { delay: 0 });
+    const before = w.stats.damage;
+    triggerSkill(w, p);
+    step(w, 60 * 2 + 5);
+    expect(p.data.beatN).toBeGreaterThanOrEqual(4);
+    expect(w.stats.damage).toBeGreaterThan(before);
+    expect(p.mods.fireRate).toBeGreaterThan(1.25);
   });
 
   for (const d of MY_PASSIVES()) {

@@ -1,17 +1,34 @@
 // Gribouille le Bricoleur : pose une tourelle alliée (ennemi charmé stationnaire) qui mitraille.
 import { defineHero, defineSprite, defineEnemy } from '../../core/registry';
 import type { Player } from '../../core/types';
+import { heroArt, legs } from './_kit';
 
 const TURRET_LIFE = 8;
 
-defineSprite('hero_gribouille', [
-  '............', '....NNNN....', '..NNNNNNNN..', 'dddddddddddd', '..g1cgg1cg..', '..gggrrggg..', '...gggggg...',
-  '.ooOooooOoo.', 'aooooyyooooa', 'aoOoooooOoo.', '..oooooooo..', '..NN....NN..', '..dd....dd..', '............',
-], {
-  frames: [[
-    '............', '....NNNN....', '..NNNNNNNN..', 'dddddddddddd', '..g1cgg1cg..', '..gggrrggg..', '...gggggg...',
-    '.ooOooooOoo.', 'aooooyyooooa', 'aoOoooooOoo.', '..oooooooo..', '...NN..NN...', '...dd..dd...', '............',
-  ]],
+// Lutin bricoleur : grandes oreilles, chapeau de cuir, lunettes de soudeur, salopette orange et clé à molette.
+heroArt('gribouille', {
+  base: [
+    '..............',
+    '.....NNNN.....',
+    '....NnnnNN....',
+    '...dNNNNNNd...',
+    '..dddddddddd..',
+    'g..c1cgc1c..g.',
+    'gg.CcCgCcC.gg.',
+    '.gggggggggggg.',
+    '...gggrgggg...',
+    '...owwwwwo....',
+    '.goOoooooOog..',
+    '.aooooyyoooo..',
+    'aAoOoooooOo...',
+    '...NNN..NNN...',
+    '...dd....dd...',
+    '..ddd...ddd...',
+  ],
+  waist: 12,
+  walk: legs('N', 'd', 4, [{ 12: '.aAoOooooOo...' }, {}, { 12: '..aAoOoooOo...' }]),
+  bob: [false, true, false],
+  blink: { 5: 'g..CCCgCCC..g.' },
 });
 
 defineSprite('e_gribouille_turret', [

@@ -1,14 +1,32 @@
 // Héros de départ. Modèle à suivre pour les autres héros.
-import { defineHero, defineSprite } from '../../core/registry';
+import { defineHero } from '../../core/registry';
+import { heroArt, legs } from './_kit';
 
-defineSprite('hero_brann', [
-  '...aaaaaa...', '..a222222a..', '.a22222222a.', '.a2AAAAAA2a.', '.a2A1AA1A2a.', '.a22222222a.', '..aAAAAAAa..',
-  '.rBBBBBBBBr.', '.rBbBBBBbBr.', '.rBBByyBBBr.', '..BBBBBBBB..', '..AA....AA..', '..AA....AA..', '..00....00..',
-], {
-  frames: [[
-    '...aaaaaa...', '..a222222a..', '.a22222222a.', '.a2AAAAAA2a.', '.a2A1AA1A2a.', '.a22222222a.', '..aAAAAAAa..',
-    '.rBBBBBBBBr.', '.rBbBBBBbBr.', '.rBBByyBBBr.', '..BBBBBBBB..', '...AA..AA...', '...AA..AA...', '...00..00...',
-  ]],
+// Casque à cimier rouge, écharpe, tunique bleue à boucle dorée, bottes ferrées.
+heroArt('brann', {
+  pal: { j: '#3a2a4a' },
+  base: [
+    '..............',
+    '......rrR.....',
+    '.....rRR......',
+    '....a222aA....',
+    '...a21222aA...',
+    '..a2122222aA..',
+    '..AAAAAAAAAA..',
+    '..As0sss0sA...',
+    '...sssSSss....',
+    '..rrrrrrrrRr..',
+    '.2aBbBBBBBaA..',
+    '.sBbBBBBBBBs..',
+    '..YYYyyYYYY...',
+    '...jjj..jjj...',
+    '...AA....AA...',
+    '..AAA...AAA...',
+  ],
+  waist: 11,
+  walk: legs('j', 'A', 4, [{ 11: '.sBbBBBBBBBs..', 10: '.2aBbBBBBBaAr.' }, {}, { 10: '.2aBbBBBBBaA.r' }]),
+  bob: [false, true, false],
+  blink: { 7: '..AsSsssSsA...' },
 });
 
 defineHero({

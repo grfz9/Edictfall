@@ -2,33 +2,43 @@
 
 > Fichier généré par `npm run docs` à partir des données du jeu. Ne pas éditer à la main.
 
-## Héros (6)
+## Héros (10)
 
 | Héros | PV | Armure | Énergie | Coût ◆ | Compétence |
 |---|---|---|---|---|---|
 | **Bouldre**, le Moine-Racine | 8 | 3 | 170 | 180 | **Onde de sève** (28 s) : Rend 2 PV aux alliés proches et repousse les ennemis. |
 | **Brann**, le Garde | 6 | 5 | 180 | 0 | **Double détente** (14 s) : Pendant 5 s, chaque tir part en double et la cadence grimpe. |
+| **Croâsimir**, le Cadre Sup' | 6 | 5 | 190 | 250 | **Langue de bois** (9 s) : Langue-grappin : avale un ennemi, ou ajourne violemment les gros. |
+| **Ferrokan**, le Rōnin Rouillé | 5 | 6 | 150 | 210 | **Iaï grinçant** (11 s) : Garde invulnérable qui renvoie les balles, puis coupe tout autour. |
 | **Gribouille**, le Bricoleur | 6 | 4 | 220 | 60 | **Tourelle bricolée** (18 s) : Pose une tourelle qui mitraille les ennemis pendant 8 s. |
 | **Oriane**, l'Égide | 5 | 7 | 160 | 30 | **Bulle d'égide** (16 s) : 3 s d'invulnérabilité ; la bulle dissout les balles proches. |
+| **Sabbatine**, Sorcière des Platines | 4 | 5 | 220 | 150 | **Drop de minuit** (20 s) : 6 s de set : chaque temps blesse autour, le 4e temps fait tout sauter. |
 | **Tamsin**, l'Horlogère | 5 | 5 | 200 | 130 | **Seconde volée** (20 s) : Pendant 5 s, ennemis et balles ennemies vont au ralenti. |
 | **Vesna**, la Lame-Vent | 4 | 4 | 140 | 90 | **Ruée du vent** (5 s) : Fonce, invulnérable, et blesse tout ce que tu traverses. |
+| **Zéphine**, Capitaine des Astres | 5 | 4 | 190 | 110 | **Bordée stellaire** (13 s) : Trois salves de boulets crachées des deux flancs. Feu à volonté ! |
 
-## Armes (68)
+## Armes (93)
 
 | Arme | Rareté | Type | Énergie | Dégâts | Description |
 |---|---|---|---|---|---|
 | Arc de récré | Commun | bow | 0 | 9 | Ventouses retirées. Règlement de cour piétiné. |
 | Pointeur de conférence | Commun | laser | 0 | 3 | Diapositive suivante : votre défaite. |
+| Bentō balistique | Commun | launcher | 2 | 12 | Maman a préparé le déjeuner. Il explose à l'impact. |
 | Pétard mouillé | Commun | launcher | 3 | 14 | Fait « pof ». Parfois « POF ». |
+| Craie du prof excédé | Commun | pistol | 0 | 6 | Lancée depuis le bureau sans même lever les yeux. Toujours au front. |
 | Pétoire de poche | Commun | pistol | 0 | 4 | Petite, nerveuse, et persuadée d'être une grande. |
 | Jumelles de cuivre | Commun | pistol | 1 | 3×2 | Deux canons, un seul cerveau. Le vôtre. |
 | Pistolet rouillé | Commun | pistol | 0 | 5 | Fiable. Ne coûte rien. Ne promet rien. |
+| Sarbacane à billes de limonade | Commun | rifle | 0 | 3.5 | On a vidé la bouteille pour la bille. Ça valait le coup. |
 | Carabine de garde-champêtre | Commun | rifle | 1 | 7 | A déjà verbalisé trois lapins et un nuage. |
 | Crachoir à pois | Commun | rifle | 0 | 3 | Cadence folle, précision de soupe. |
 | Tromblon de grand-père | Commun | shotgun | 2 | 3×5 | Il racontait toujours qu'il visait les loups. |
 | Fourche de fermier | Commun | spear | 0 | 9 | Trois dents, aucune pitié, foin compris. |
+| Mille grues de papier | Commun | staff | 1 | 4.5 | Il en manque encore 997 pour le vœu. En attendant, elles piquent. |
 | Brindille magique | Commun | staff | 1 | 5 | Trouvée par terre. Elle aussi vous a trouvé. |
 | Sceptre-Braise | Commun | staff | 1 | 6 | Idéal pour les marshmallows et les ennemis mous. |
+| Baguettes de cantine | Commun | sword | 0 | 5 | Attrape les mouches. Et les yeux, si on insiste. |
+| Balai du délégué de classe | Commun | sword | 0 | 9 | Le couloir sera propre. Vous aussi, d'une certaine manière. |
 | Épée de fer | Commun | sword | 0 | 11 | Tranche large, coupe les balles. Sans énergie. |
 | Épée en bois de cagette | Commun | sword | 0 | 8 | Échardes offertes avec chaque coup. |
 | Hareng giflant | Commun | weird | 0 | 10 | Une claque iodée qui ne s'oublie pas. |
@@ -38,6 +48,7 @@
 | Arc long du braconnier | Peu commun | bow | 3 | 22 | Silencieux, patient, et pas très en règle. |
 | Découpe-tôle | Peu commun | laser | 1 | 6 | Garantie deux ans, sauf usage sur des gens. |
 | Fusée de kermesse | Peu commun | launcher | 4 | 10 | Premier prix au chamboule-tout. Et au chamboule-tous. |
+| Index spectral | Peu commun | pistol | 2 | 10 | Le doigt-pistolet, mais en vrai. Ne visez pas votre reflet. |
 | Barillet grincheux | Peu commun | pistol | 2 | 11 | Un coup par clic, et il râle à chaque fois. |
 | Ricocheuse | Peu commun | pistol | 1 | 6 | Vise le mur. Le mur visera pour vous. |
 | Tricoteuse | Peu commun | rifle | 3 | 5 | Trois mailles à l'endroit, trois trous dans l'ennemi. |
@@ -45,25 +56,35 @@
 | Pompe-à-Pépins | Peu commun | shotgun | 3 | 3.5×6 | Chik-chak. Les fruits n'ont jamais été aussi dangereux. |
 | Javelot d'entraînement | Peu commun | spear | 2 | 12 | Lancer, ramasser, recommencer. Surtout lancer. |
 | Harpon de quai | Peu commun | spear | 3 | 14 | Ramène tout ce qu'il touche. Même ce qu'on ne voulait pas. |
+| Sceptre Cœur-Scintillant | Peu commun | staff | 1 | 6 | Transformation ! Paillettes, rubans et justice à tête chercheuse. |
 | Bâton du marais | Peu commun | staff | 2 | 7 | Sent la vase et le mauvais présage. |
+| Shinaï du club | Peu commun | sword | 0 | 10 | MEN ! Le capitaine du club l'a laissé traîner. Erreur. |
 | Rapière de l'escrimeur pressé | Peu commun | sword | 0 | 7 | Touché ! Et touché. Et retouché. |
 | Fendoir de boucherie | Peu commun | sword | 0 | 20 | Le boucher ne l'a pas prêté. Le boucher ne sait pas. |
+| Kunaïs d'entraînement | Peu commun | weird | 2 | 3.2×3 | Trois lames émoussées. L'académie ne les a jamais réclamées. |
+| Poing-fusée de poche | Peu commun | weird | 3 | 14 | Le bras part. Le bras revient ? Le bras ne revient pas. On en a d'autres. |
+| Smash du club de volley | Peu commun | weird | 2 | 11 | Service, réception, attaque. Surtout attaque. La finale régionale vous regarde. |
 | Panneau STOP | Peu commun | weird | 0 | 14 | Ils s'arrêtent. C'est la loi. |
 | Grille-pain de combat | Peu commun | weird | 2 | 7×2 | Petit-déjeuner servi à 200 km/h. |
 | Arrosoir à pression | Peu commun | weird | 1 | 1.6×4 | Les ennemis poussent moins bien quand on les arrose. |
 | Arc trident | Rare | bow | 5 | 11×3 | Trois flèches, parce que deux, c'est mesquin. |
 | Arc de givre | Rare | bow | 5 | 26 | Les cibles restent figées d'admiration. Littéralement. |
 | Impulseur | Rare | laser | 4 | 7 | Trois éclairs bleus, zéro remords. |
-| Grappe-Grêle | Rare | launcher | 6 | 36 | Une grenade, puis six petites qui veulent faire comme la grande. |
+| Grappe-Grêle | Rare | launcher | 6 | 32 | Une grenade, puis six petites qui veulent faire comme la grande. |
 | Semeuse de mines | Rare | launcher | 5 | 19 | Jardinage explosif : plantez, attendez, récoltez. |
 | Derringer givré | Rare | pistol | 2 | 9 | Calme les ardeurs, à commencer par celles des genoux. |
+| Ombrelle-mitrailleuse | Rare | rifle | 1 | 4.4 | La gouvernante range une sulfateuse dans son ombrelle. Le thé est servi. |
 | Long-Silence | Rare | rifle | 7 | 40 | On ne l'entend jamais deux fois. |
 | Mitraille automatique | Rare | shotgun | 3 | 3.5×4 | Pour ceux qui trouvent le mot « viser » trop long. |
 | Souffle du lézard | Rare | shotgun | 3 | 2.5×7 | Il a mangé un piment. Vous récoltez les conséquences. |
+| Bâton-nuage extensible | Rare | spear | 1 | 15 | S'allonge à volonté. Tous les trois coups, un petit nuage part faire des siennes. |
 | Hallebarde du veilleur | Rare | spear | 1 | 22 | Garde la porte, la tour, et votre distance. |
 | Crosse de givre | Rare | staff | 3 | 12 | Chaque sort se brise en flocons vexés. |
 | Bâton-Orage | Rare | staff | 3 | 8×2 | Deux étincelles qui savent où vous habitez. |
+| Faucille à chaîne | Rare | sword | 0 | 16 | La chaîne fait le tour, la faucille fait le reste. Ramène les fuyards. |
 | Lame-Miroir | Rare | sword | 1 | 16 | Retour à l'envoyeur, avec accusé de réception. |
+| Éventail de tempête | Rare | weird | 1 | 14 | Un battement d'éventail, et la cour entière change d'avis. |
+| Yo-yo de la terreur | Rare | weird | 3 | 8.1 | Le délinquant au manteau long a ses méthodes. Tour du monde, retour à l'envoyeur. |
 | Banane-boomerang (Arsenal, 20 ◆) | Rare | weird | 3 | 14 | Revient toujours. Comme les remords. |
 | Klaxon de livreur (Arsenal, 25 ◆) | Rare | weird | 3 | 15 | POUÊT. Tout le monde recule, balles comprises. |
 | Arc-Tonnerre (Arsenal, 50 ◆) | Épique | bow | 8 | 40 | Il gronde avant de tirer. Vous aussi, désormais. |
@@ -72,18 +93,26 @@
 | Magnum du Notaire (Arsenal, 40 ◆) | Épique | pistol | 5 | 26 | Chaque balle est un acte authentique, signé et tamponné. |
 | Grêle de plomb (Arsenal, 35 ◆) | Épique | rifle | 5 | 6 | Quatre balles d'un coup : la météo est formelle. |
 | Seringueuse | Épique | rifle | 2 | 9 | Vaccin contre la bonne santé. |
-| Pétaradeuse (Arsenal, 30 ◆) | Épique | shotgun | 6 | 7×5 | Chaque plomb éclate en trois. Les ennemis aussi. |
+| Pétaradeuse (Arsenal, 30 ◆) | Épique | shotgun | 6 | 6×5 | Chaque plomb éclate en trois. Les ennemis aussi. |
+| Lance du serment (Arsenal, 40 ◆) | Épique | spear | 5 | 13 | Elle a juré de revenir dans votre main. Elle traverse tout pour tenir parole. |
 | Pique d'orage (Arsenal, 30 ◆) | Épique | spear | 1 | 26 | Un pas en avant, et l'électricité fait le reste. |
 | Grimoire claqué (Arsenal, 45 ◆) | Épique | staff | 6 | 4×8 | On l'ouvre, il crache huit malédictions et se referme vexé. |
+| Dégaine du rōnin errant (Arsenal, 55 ◆) | Épique | sword | 1 | 30 | Maintenir pour rengainer. Relâcher : on ne voit rien, puis tout tombe. |
 | Épée-flambée (Arsenal, 40 ◆) | Épique | sword | 1 | 22 | Servie bien chaude, arrosée de cris. |
+| Brelan explosif (Arsenal, 45 ◆) | Épique | weird | 9 | 8×3 | Le joueur en manteau violet abat ses cartes. Elles abattent le reste. |
 | Aimant de frigo géant (Arsenal, 30 ◆) | Épique | weird | 4 | 10×2 | Attire les ennemis, les factures et les ennuis. |
-| Lance-Nains de jardin (Arsenal, 25 ◆) | Épique | weird | 6 | 30 | Ils volent, ils explosent, ils gardent le sourire. |
+| Lance-Nains de jardin (Arsenal, 25 ◆) | Épique | weird | 6 | 27 | Ils volent, ils explosent, ils gardent le sourire. |
 | Arc des Comètes (Arsenal, 110 ◆) | Légendaire | bow | 15 | 30 | Chargé à fond, il fait pleuvoir le ciel sur la cible. |
+| Canon d'âme à deux mains (Arsenal, 105 ◆) | Légendaire | laser | 18 | 90 | Joindre les mains, crier très fort, maintenir. Le décor se souviendra de vous. |
 | Lance-Soleil (Arsenal, 100 ◆) | Légendaire | laser | 2 | 8 | Plus vous maintenez, plus il fait chaud. Beaucoup plus chaud. |
+| Bras du méca titan (Arsenal, 120 ◆) | Légendaire | launcher | 16 | 22 | Le pilote a quatorze ans et beaucoup d'émotions. Le poing part, les missiles suivent. |
 | Requiem en Do (Arsenal, 120 ◆) | Légendaire | launcher | 14 | 18 | Une roquette, trois couplets, aucun survivant au refrain. |
 | Écho-Pistolet (Arsenal, 90 ◆) | Légendaire | pistol | 3 | 11 | Il tire, puis il se répète. Comme votre oncle au réveillon. |
 | Sceptre du Néant Poli (Arsenal, 115 ◆) | Légendaire | staff | 20 | 6 | Un petit trou noir de poche. Attention aux clés. |
+| Lame fend-espace (Arsenal, 110 ◆) | Légendaire | sword | 1 | 24 | Elle ne coupe pas l'ennemi : elle coupe l'endroit où il se tient. Le réel suit avec un temps de retard. |
 | Fauche-Éclipse (Arsenal, 95 ◆) | Légendaire | sword | 1 | 26 | Un coup de lame, et la nuit continue le travail. |
+| Gant du coup banal (Arsenal, 100 ◆) | Légendaire | weird | 1 | 140 | Un gant jaune de héros blasé. Ce n'est qu'un coup normal. Tout s'envole quand même. |
+| Kunaï du saut-éclair (Arsenal, 90 ◆) | Légendaire | weird | 8 | 22 | Lancez-le. Vous êtes déjà là-bas. L'ennemi, lui, n'a pas compris. |
 | Accordéon du Chaos (Arsenal, 80 ◆) | Légendaire | weird | 9 | 5×8 | Trois airs au répertoire, tous interdits par la convention. |
 
 ## Édits — règles qui modifient la partie (56)
@@ -225,7 +254,7 @@
 | **Sang-froid** | Brûlure, gel, poison et choc ne durent jamais plus d'une demi-seconde. |
 | **Second souffle** | Une fois par run, refuse la mort et revient avec la moitié de ses PV. |
 
-## Familiers (5)
+## Familiers (7)
 
 | Familier | Coût ◆ | Effet |
 |---|---|---|
@@ -234,24 +263,26 @@
 | **Grigou** | 50 | Une bourse vivante qui rabat pièces et gemmes vers toi. |
 | **Mousse** | 80 | Un petit tas de mousse qui rend 1 PV toutes les 45 s. |
 | **Givrelin** | 120 | Un esprit du gel dont les flocons figent les ennemis. |
+| **Glouglou** | 60 | Un poisson rouge dans un bocal volant. Ses bulles éclatent en mini-geyser. |
+| **Ombrelle** | 140 | Une ombrelle vivante et snob. Elle gobe une balle visant son maître toutes les 5 s. |
 
-## Monde 1 — Sylve Murmurante (21 ennemis)
+## Monde 1 — Sylve Murmurante (23 ennemis)
 
-Gelée des mousses · Lutin frondeur · Chauve-furie · Souche bougonne · Druidelle rebouteuse · Cerf des brumes · Tisseuse de ronces · Garde-écorce · Vesse-de-loup kamikaze · Ruche vagabonde · Hibou-sorcier · Sylvain colosse · Dryade d'écume · Mousseron grincheux · Scarabée-bélier · Feu follet farceur · Luciole fuyarde · Pétale-canon · Crapaud-mortier · Farfadet clignotant · Guêpe-dard
+Heaume-Vide · Reine-Essaim · Gelée des mousses · Lutin frondeur · Chauve-furie · Souche bougonne · Druidelle rebouteuse · Cerf des brumes · Tisseuse de ronces · Garde-écorce · Vesse-de-loup kamikaze · Ruche vagabonde · Hibou-sorcier · Sylvain colosse · Dryade d'écume · Mousseron grincheux · Scarabée-bélier · Feu follet farceur · Luciole fuyarde · Pétale-canon · Crapaud-mortier · Farfadet clignotant · Guêpe-dard
 
 **Boss : Souche-Roi** — Monarque des racines mortes (3 phases)
 
 
-## Monde 2 — Glacier Fendu (23 ennemis)
+## Monde 2 — Glacier Fendu (25 ennemis)
 
-Pingouin fusilier · Yéti nabot · Flocon errant · Pingouin-luge · Chauve-givre · Lièvre des congères · Cristal vivant · Palet fou · Phoque-canon · Esprit du givre · Stalagmite guetteuse · Bonhomme de rancune · Patineur spectral · Pingouin à lunette · Automate dégivreur · Foreuse gelée · Morse mineur · Feu d'aurore · Golem au pavois · Souffle-blizzard · Canon de banquise · Yéti hurleur · Spectre de blizzard
+Mage-Miroir · Louve-Alpha · Pingouin fusilier · Yéti nabot · Flocon errant · Pingouin-luge · Chauve-givre · Lièvre des congères · Cristal vivant · Palet fou · Phoque-canon · Esprit du givre · Stalagmite guetteuse · Bonhomme de rancune · Patineur spectral · Pingouin à lunette · Automate dégivreur · Foreuse gelée · Morse mineur · Feu d'aurore · Golem au pavois · Souffle-blizzard · Canon de banquise · Yéti hurleur · Spectre de blizzard
 
 **Boss : Horlogère Givrale** — Gardienne du temps figé (3 phases)
 
 
-## Monde 3 — Forge Abyssale (22 ennemis)
+## Monde 3 — Forge Abyssale (24 ennemis)
 
-Diablotin marteleur · Chauve-braise · Salamandre des soufflets · Scorie rampante · Canon-mortier · Feu-follet de forge · Crapaud de cendre · Nuée d'escarbilles · Soufflet vivant · Enclume vivante · Pétard-follet · Orbe-fournaise · Geyser de magma · Golem de scories · Automate en fusion · Ver de lave · Maître-forgeron · Fondeur à creuset · Marteau-pilon · Lanterne à scories · Héraut des Édits · Chaudron colosse
+Greffier incandescent · Matrone du creuset · Diablotin marteleur · Chauve-braise · Salamandre des soufflets · Scorie rampante · Canon-mortier · Feu-follet de forge · Crapaud de cendre · Nuée d'escarbilles · Soufflet vivant · Enclume vivante · Pétard-follet · Orbe-fournaise · Geyser de magma · Golem de scories · Automate en fusion · Ver de lave · Maître-forgeron · Fondeur à creuset · Marteau-pilon · Lanterne à scories · Héraut des Édits · Chaudron colosse
 
 **Boss : Primat Fondeur** — Celui qui coule les Édits dans le magma (4 phases)
 

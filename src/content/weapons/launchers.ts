@@ -2,7 +2,7 @@
 // id                    | rareté | DPS                                       | énergie/s
 // launcher_firecracker  | 0      | 17.5                                      | 3.75
 // launcher_fair         | 1      | 26.7 (10 impact + 10 souffle)             | 5.3
-// launcher_cluster      | 2      | 40.0 (+ 6 éclats bonus)                   | 6.7
+// launcher_cluster      | 2      | 35.6 + éclats 25 % = 42.2                 | 6.7
 // launcher_mines        | 2      | 42.2 (19 + 19)                            | 5.6
 // launcher_napalm       | 3      | 56.7 (+ brûlure)                          | 10.0
 // launcher_requiem      | 4      | 42.4 si impact précoce ; ≈ 76 en 3 têtes  | 16.5
@@ -15,10 +15,10 @@ spr('b_cracker', ['..y', 'rrR', 'rrR']);
 spr('b_mine', ['.444.', '4rRr4', '4RrR4', '.444.']);
 spr('b_molotov', ['..w.', '.nnv', 'nddn', '.nn.']);
 
-spr('w_launcher_firecracker', ['.rrrrrrr.', 'rRyRRyRRy', 'rrrrrrrr.', '.N..N....'], { ox: 2, oy: 2 });
+spr('w_launcher_firecracker', ['..y...........', '.rRrrrRrrrRrr.', 'nr1yrr1yrr1yrr', 'NrRrrrRrrrRrr.', '.N..N.........'], { ox: 2, oy: 2 });
 defineWeapon({
   id: 'launcher_firecracker', name: 'Pétard mouillé', desc: 'Fait « pof ». Parfois « POF ».', rarity: 0, type: 'launcher',
-  sprite: 'w_launcher_firecracker', energy: 3, cooldown: 0.8, damage: 14, recoil: 4, kick: 15, shake: 1.5, sfx: 'launch', casing: false,
+  sprite: 'w_launcher_firecracker', energy: 3, cooldown: 0.8, damage: 14, recoil: 4, kick: 15, shake: 1.5, sfx: 'launch', muzzle: 0xff9a30, casing: false,
   bullet: { kind: 'lob', sprite: 'b_cracker', explode: { radius: 18 }, spin: 9 },
   onFire: (ctx, ev) => aimLob(ctx, ev, 110),
 });
@@ -33,7 +33,7 @@ defineWeapon({
 spr('w_launcher_cluster', ['.FFFFFFFF..', 'FfffffffffG', 'FfGGGGGGffG', 'FFFFFFFFFF.', '.d..d......'], { ox: 2, oy: 2 });
 defineWeapon({
   id: 'launcher_cluster', name: 'Grappe-Grêle', desc: 'Une grenade, puis six petites qui veulent faire comme la grande.', rarity: 2, type: 'launcher',
-  sprite: 'w_launcher_cluster', energy: 6, cooldown: 0.9, damage: 36, recoil: 5, kick: 25, shake: 2, sfx: 'launch', casing: false,
+  sprite: 'w_launcher_cluster', energy: 6, cooldown: 0.9, damage: 32, recoil: 5, kick: 25, shake: 2, sfx: 'launch', casing: false,
   bullet: { kind: 'lob', sprite: 'b_grenade', explode: { radius: 24 }, spin: 6, split: { count: 6, spec: { damage: 4, speed: 150, life: 0.35, sprite: 'b_small' } } },
   onFire: (ctx, ev) => aimLob(ctx, ev, 130),
 });

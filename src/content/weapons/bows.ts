@@ -15,37 +15,46 @@ spr('b_arrow_bolt', ['.....y...', 'yyyyyy1yy', '.....y...']);
 spr('b_arrow_comet', ['.......yy.', 'pPpPyyy11y', '.......yy.']);
 spr('b_star', ['..y..', '.yyy.', 'yy1yy', '.yyy.', '.y.y.']);
 
-const BOW = (c: string, s: string) => ['.' + c + c + '...', c + '..' + c + '..', c + '...' + c + '.', c + 'nnnn' + c + s + s, c + '...' + c + '.', c + '..' + c + '..', '.' + c + c + '...'];
+const SHADE: Record<string, string> = { n: 'N', N: 'd', I: 'C', y: 'Y' };
+/** Arc : corde claire à gauche, branches ombrées, poignée ligaturée, flèche encochée (pointe s). */
+const BOW = (c: string, s: string) => {
+  const d = SHADE[c] ?? c;
+  return [
+    '2' + c + c + '.......', '2..' + c + d + '.....', '2....' + c + d + '...', '2.....' + c + d + '..',
+    'Nnnnnnd' + d + s + s,
+    '2.....' + c + d + '..', '2....' + c + d + '...', '2..' + c + d + '.....', '2' + c + c + '.......',
+  ];
+};
 
-spr('w_bow_recess', BOW('n', '2'), { ox: 1, oy: 3 });
+spr('w_bow_recess', BOW('n', '2'), { ox: 1, oy: 4 });
 defineWeapon({
   id: 'bow_recess', name: 'Arc de récré', desc: 'Ventouses retirées. Règlement de cour piétiné.', rarity: 0, type: 'bow',
   sprite: 'w_bow_recess', energy: 0, cooldown: 0.15, damage: 9, charge: { time: 0.3, minMult: 0.4 }, recoil: 2, shake: 0.3, casing: false,
-  bullet: { speed: 300, sprite: 'b_arrow', life: 1 },
+  bullet: { speed: 300, sprite: 'b_arrow', life: 1, trail: 0xc8d0e0 },
 });
 
-spr('w_bow_poacher', BOW('N', 'f'), { ox: 1, oy: 3 });
+spr('w_bow_poacher', BOW('N', 'f'), { ox: 1, oy: 4 });
 defineWeapon({
   id: 'bow_poacher', name: 'Arc long du braconnier', desc: 'Silencieux, patient, et pas très en règle.', rarity: 1, type: 'bow',
   sprite: 'w_bow_poacher', energy: 3, cooldown: 0.2, damage: 22, crit: 0.12, charge: { time: 0.6, minMult: 0.3 }, recoil: 3, shake: 0.6, casing: false,
-  bullet: { speed: 380, sprite: 'b_arrow', life: 1, pierce: 1 },
+  bullet: { speed: 380, sprite: 'b_arrow', life: 1, pierce: 1, trail: 0xc8d0e0 },
 });
 
 spr('w_bow_trident', ['.tt....', 't..t...', 't...t.y', 't...2ty', 't...t.y', 't..t...', '.tt....'], { ox: 1, oy: 3 });
 defineWeapon({
   id: 'bow_trident', name: 'Arc trident', desc: 'Trois flèches, parce que deux, c\'est mesquin.', rarity: 2, type: 'bow',
   sprite: 'w_bow_trident', energy: 5, cooldown: 0.2, damage: 11, count: 3, spread: 0.25, charge: { time: 0.6, minMult: 0.35 }, recoil: 3, shake: 0.6, casing: false,
-  bullet: { speed: 340, sprite: 'b_arrow', life: 1 },
+  bullet: { speed: 340, sprite: 'b_arrow', life: 1, trail: 0x30c0b0 },
 });
 
-spr('w_bow_frost', BOW('I', 'c'), { ox: 1, oy: 3 });
+spr('w_bow_frost', BOW('I', 'c'), { ox: 1, oy: 4 });
 defineWeapon({
   id: 'bow_frost', name: 'Arc de givre', desc: 'Les cibles restent figées d\'admiration. Littéralement.', rarity: 2, type: 'bow',
   sprite: 'w_bow_frost', energy: 5, cooldown: 0.2, damage: 26, charge: { time: 0.55, minMult: 0.35 }, recoil: 3, shake: 0.6, sfx: 'ice', casing: false,
   bullet: { speed: 340, sprite: 'b_arrow_ice', life: 1, status: { kind: 'freeze', dur: 1.2 }, trail: 0xd8f0ff },
 });
 
-spr('w_bow_thunder', BOW('y', 'b'), { ox: 1, oy: 3 });
+spr('w_bow_thunder', BOW('y', 'b'), { ox: 1, oy: 4 });
 defineWeapon({
   id: 'bow_thunder', name: 'Arc-Tonnerre', desc: 'Il gronde avant de tirer. Vous aussi, désormais.', rarity: 3, type: 'bow',
   sprite: 'w_bow_thunder', energy: 8, cooldown: 0.2, damage: 40, charge: { time: 0.6, minMult: 0.3 }, recoil: 4, shake: 1.5, sfx: 'zap', casing: false,

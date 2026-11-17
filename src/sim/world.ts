@@ -1,13 +1,17 @@
 // World : l'état complet d'une partie + la boucle de simulation. Pur (ni DOM ni Pixi).
 import type {
   Player, Enemy, Bullet, Pickup, Chest, Interactable, Prop, Pet, Fx, Mods, Room, SaveData, HeroDef, ModifierDef,
-  PickupKind, WeaponInst, Loot, ChestEvent, RuleOfferEvent, PlayerInput, Entity, EnemyDef,
+  PickupKind, WeaponInst, Loot, ChestEvent, RuleOfferEvent, PlayerInput, Entity, EnemyDef, Dialog, RunMode,
 } from '../core/types';
 import { R, allRules, allPassives } from '../core/registry';
 import { Rng } from '../core/rng';
 import { baseMods, clampMods, ModStack } from '../core/mods';
 import { rollRarity, weaponPrice } from '../core/damage';
-import { Ctx } from './ctx';
+import { Ctx, type Pact } from './ctx';
+import { SPECIAL_ROOMS, type SpecialRoomDef, type RoomKit } from '../content/rooms/_kit';
+import { WASSIM_GREETINGS, WASSIM_REFUSE, WASSIM_IDLE, WASSIM_BYE, dealsFor, type WassimDeal } from '../content/story/wassim';
+import { HUB_NPCS, TRAINING, WASSIM_HUB_SIGN, type HubNpc } from '../content/misc/npcs';
+import { INTERLUDES, ENDLESS_QUIPS } from '../content/story/lore';
 import { T, TILE, tileAt, isSolidTile, roomAt, roomCenter, generateFloor, generateHub, defaultPlan, type Floor } from './dungeon';
 import { updateBullets, updateWeapon, makeWeapon, damagePlayer, tickStatus } from './combat';
 import { spawnEnemy, updateEnemies, computeFlow, moveEntity, type Flow } from './enemies';
@@ -38,10 +42,37 @@ export interface RunSummary {
   damage: number;
   rooms: number;
   bosses: number;
+  /** Mode de jeu de la run. */
+  mode: RunMode;
+  score: number;
+  /** Étage atteint (1 = premier). */
+  stage: number;
+  /** Record précédent pour ce mode (0 = aucun). */
+  best: number;
+  newRecord: boolean;
+  /** Fin narrative à jouer (victoire en mode Histoire). */
+  ending: boolean;
+  /** Édits imposés (défi quotidien). */
+  daily: string[];
+}
+/** Bulle de dialogue au-dessus d'une entité (affichée par l'interface). */
+export interface Bubble {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
+  t: number;
+  max: number;
+  follow: { x: number; y: number; dead?: boolean } | null;
 }
 export const emptyInput = (): PlayerInput => ({ mx: 0, my: 0, ax: 0, ay: 0, aimManual: false, fire: false, firePressed: false, swap: false, interact: false, skill: false });
 
 export const WORLD_NAMES = ['Le Hall', 'Sylve Murmurante', 'Glacier Fendu', 'Forge Abyssale'];
+export const MODE_NAMES: Record<RunMode, string> = { story: 'Histoire', endless: 'Infini', daily: 'Défi quotidien' };
+/** Seed du défi quotidien pour une date (calculée hors simulation). */
+export function dailySeedFor(y: number, m: number, d: number): string {
+  return 'J' + y + String(m).padStart(2, '0') + String(d).padStart(2, '0');
+}
 
 export class World {
   reg = R;
@@ -91,6 +122,24 @@ export class World {
   private pending = 0;
   /** Appelé quand la sauvegarde doit être écrite. */
   persist: () => void = () => {};
+  /** Mode de la run en cours / mode choisi au hall pour la prochaine run. */
+  runMode: RunMode = 'story';
+  hubMode: RunMode = 'story';
+  /** Pactes actifs (marchés de Wassim, salles…). */
+  pacts: Pact[] = [];
+  /** Boîte de dialogue ouverte (met la simulation en pause). */
+  dialog: Dialog | null = null;
+  bubbles: Bubble[] = [];
+  /** Tests / debug : force cette salle spéciale au prochain étage. */
+  forceSpecial: string | null = null;
+  /** Édits imposés du défi quotidien. */
+  dailyRules: string[] = [];
+  private specialsUsed: string[] = [];
+  private kits = new Map<number, { def: SpecialRoomDef; kit: RoomKit }>();
+  private ambientT = 2;
+  private dps = { t: 0, last: 0, hist: [] as number[] };
+  private trainZone = { x0: 0, y0: 0, x1: 0, y1: 0 };
+  private hooksWarned = new Set<string>();
 
   constructor(public save: SaveData) {
     this.ctx = new Ctx(this);
@@ -163,7 +212,7 @@ export class World {
   private reset(): void {
     this.enemies = []; this.bullets = []; this.pickups = []; this.chests = []; this.items = []; this.props = []; this.pets = [];
     this.timers = []; this.choice = null; this.choiceQueue = []; this.boss = null; this.flow = null; this.curRoom = null;
-    this.hitstop = 0; this.vacuum = 0; this.pending = 0; this.focus = [];
+    this.hitstop = 0; this.vacuum = 0; this.pending = 0; this.focus = []; this.bubbles = [];
     this.fx.push({ t: 'tiles' });
   }
 
@@ -196,38 +245,85 @@ export class World {
     this.mode = 'hub';
     this.rules = new ModStack(() => this.ctx);
     this.mods = baseMods();
+    this.pacts = []; this.dialog = null; this.bubbles = [];
     this.worldNum = 0; this.floorNum = 0; this.loop = 0;
+    const saved = this.save.flags?.mode as RunMode | undefined;
+    if (saved === 'story' || saved === 'endless' || saved === 'daily') this.hubMode = saved;
     this.floor = generateHub();
     this.curRoom = this.floor.start;
     this.summary = null;
     const c = roomCenter(this.floor.start);
     const hero = this.heroDef(this.save.hero);
     this.save.hero = hero.id;
-    this.players = [this.makePlayer(hero, 0, c.x, c.y + 40)];
+    this.players = [this.makePlayer(hero, 0, c.x, c.y - 26)];
     this.addPet(this.players[0]);
-    // héros alignés en haut du hall
+    const deco = (sprite: string, dx: number, dy: number, tint?: number) =>
+      this.items.push({ id: this.nextId++, kind: 'npc', x: c.x + dx, y: c.y + dy, sprite, label: '', radius: 0, dead: false, tint });
+    const block = (dx: number, dy: number) => {
+      const tx = Math.floor((c.x + dx) / TILE), ty = Math.floor((c.y + dy) / TILE);
+      if (tileAt(this.floor, tx, ty) === T.FLOOR) this.floor.tiles[tx + ty * this.floor.w] = T.BLOCK;
+    };
+    // --- décor : torches, bannières, bibliothèques, plantes, fontaine (solide)
+    for (const dx of [-60, 60, -170, 170]) deco('deco_torch', dx, -178);
+    for (const dx of [-110, 110]) deco('deco_banner', dx, -176);
+    for (const dx of [-282, -262]) deco('deco_shelf', dx, -6);
+    deco('deco_shelf', -282, 140); deco('deco_shelf', -262, 140);
+    for (const [dx, dy] of [[-290, -170], [290, 170], [-290, 172], [120, 60], [-120, 60]]) deco('deco_plant', dx, dy);
+    deco('deco_crystal', -200, -90); deco('deco_crystal', 200, 130);
+    deco('deco_fountain', 0, 64);
+    deco('deco_board', -104, 132);
+    block(0, 68);
+    for (const [dx, dy] of [[-150, -120], [-150, 20]]) block(dx, dy);
+    // --- héros alignés sous le portail
     const heroes = [...R.heroes.values()];
-    heroes.forEach((h, i) => {
-      const x = c.x + (i - (heroes.length - 1) / 2) * 44;
-      this.items.push(this.heroStand(h, x, c.y - 52));
-    });
+    const gap = Math.min(44, 520 / Math.max(1, heroes.length));
+    heroes.forEach((h, i) => this.items.push(this.heroStand(h, c.x + (i - (heroes.length - 1) / 2) * gap, c.y - 92)));
     this.items.push({
-      id: this.nextId++, kind: 'portal', x: c.x, y: c.y + 4, sprite: 'portal', label: 'Entrer dans le donjon', sub: 'Commencer une run', radius: 16, dead: false, bob: true,
+      id: this.nextId++, kind: 'portal', x: c.x, y: c.y - 150, sprite: 'portal', label: 'Entrer dans le donjon', sub: 'Mode : ' + MODE_NAMES[this.hubMode], radius: 18, dead: false, bob: true,
       use: () => { this.request = { type: 'start' }; },
     });
     this.items.push({
-      id: this.nextId++, kind: 'npc', x: c.x - 150, y: c.y + 50, sprite: 'npc_smith', label: 'Arsenal', sub: 'Débloquer des armes', radius: 18, dead: false,
-      use: () => { this.request = { type: 'arsenal' }; },
+      id: this.nextId++, kind: 'npc', x: c.x - 150, y: c.y - 160, sprite: 'deco_sign', label: 'Affiche', sub: 'Lire', radius: 16, dead: false,
+      use: (_c, _p, self) => { this.say(self, WASSIM_HUB_SIGN, 4); },
     });
+    // --- PNJ
+    for (const n of HUB_NPCS) this.items.push(this.hubNpc(n, c.x + n.dx, c.y + n.dy));
     this.items.push({
-      id: this.nextId++, kind: 'npc', x: c.x + 150, y: c.y + 50, sprite: 'npc_keeper', label: 'Chenil', sub: 'Choisir un familier', radius: 18, dead: false,
-      use: () => { this.request = { type: 'pets' }; },
+      id: this.nextId++, kind: 'npc', x: c.x - 150, y: c.y + 150, sprite: 'deco_trophy', label: 'Records', sub: 'Tes meilleurs scores', radius: 16, dead: false,
+      use: () => { this.request = { type: 'modes' }; },
     });
+    // --- entraînement : mannequins + panneau
+    this.trainZone = { x0: c.x + 140, y0: c.y - 170, x1: c.x + 300, y1: c.y + 40 };
     this.items.push({
-      id: this.nextId++, kind: 'npc', x: c.x - 150, y: c.y - 10, sprite: 'npc_scribe', label: 'Codex', sub: 'Édits et synergies découverts', radius: 18, dead: false,
-      use: () => { this.request = { type: 'codex' }; },
+      id: this.nextId++, kind: 'npc', x: c.x + 160, y: c.y - 150, sprite: 'deco_sign', label: 'Entraînement', sub: 'Compétence autorisée ici', radius: 16, dead: false,
+      data: { lines: TRAINING.lines }, use: (_c, _p, self) => { this.say(self, TRAINING.sign, 4); },
     });
-    if (R.enemies.has('dummy')) spawnEnemy(this, 'dummy', c.x + 150, c.y - 10, { delay: 0 });
+    if (R.enemies.has('dummy')) for (const [dx, dy] of [[230, -120], [265, -60], [225, -10]]) spawnEnemy(this, 'dummy', c.x + dx, c.y + dy, { delay: 0 });
+    this.dps = { t: 0, last: this.stats.damage, hist: [] };
+    this.ambientT = 1.5;
+  }
+
+  /** PNJ du hall : bulle à l'approche, conversation ou panneau à l'interaction. */
+  private hubNpc(n: HubNpc, x: number, y: number): Interactable {
+    return {
+      id: this.nextId++, kind: 'npc', x, y, sprite: n.sprite, label: n.label, sub: n.sub, radius: 20, dead: false,
+      data: { lines: n.lines, greet: n.greet, home: x, wander: n.wander ?? 0, npc: n.id },
+      use: (_c, _p, self) => {
+        const panel = () => { if (n.panel) this.request = { type: n.panel }; };
+        if (n.talk) {
+          this.openDialog({
+            lines: n.talk,
+            options: [
+              ...(n.panel ? [{ label: n.panelLabel ?? n.label, act: panel }] : []),
+              { label: 'Au revoir', cancel: true },
+            ],
+          });
+        } else {
+          this.say(self, n.greet, 2.5);
+          panel();
+        }
+      },
+    };
   }
 
   private heroStand(h: HeroDef, x: number, y: number): Interactable {
@@ -265,10 +361,12 @@ export class World {
   }
 
   /** Démarre une run. heroIds : un héros par joueur (1 ou 2). */
-  startRun(seed: string, heroIds: string[]): void {
+  startRun(seed: string, heroIds: string[], mode: RunMode = 'story'): void {
     this.reset();
     this.mode = 'run';
+    this.runMode = mode;
     this.seed = seed;
+    this.pacts = []; this.dialog = null; this.bubbles = []; this.specialsUsed = []; this.dailyRules = [];
     const base = new Rng(seed);
     this.rng = { dungeon: base.fork('dungeon'), loot: base.fork('loot'), rules: base.fork('rules'), combat: base.fork('combat') };
     this.rules = new ModStack(() => this.ctx);
@@ -278,9 +376,190 @@ export class World {
     this.worldNum = 1; this.floorNum = 1; this.loop = 0; this.summary = null;
     this.players = heroIds.map((id, i) => this.makePlayer(this.heroDef(id), i));
     this.save.stats.runs++;
+    const rec = (this.save.records ??= {});
+    if (mode === 'daily') rec.dailyPlayed = (rec.dailyPlayed ?? 0) + 1;
     this.loadFloor();
-    this.offerRules('ÉDIT FONDATEUR', 'Choisis la première règle qui régira cette run.');
+    if (mode === 'daily') this.imposeDaily();
+    else this.offerRules('ÉDIT FONDATEUR', 'Choisis la première règle qui régira cette run.');
+    if (mode === 'endless') this.fx.push({ t: 'banner', title: 'MODE INFINI', sub: 'Les étages ne finissent jamais. Ta patience, si.', color: '#c070ff' });
     this.persist();
+  }
+
+  /** Défi quotidien : 3 édits imposés, tirés de la seed (identiques pour tout le monde ce jour-là). */
+  private imposeDaily(): void {
+    const rng = new Rng(this.seed).fork('daily-edicts');
+    for (let i = 0; i < 3; i++) {
+      const pool = this.eligibleRules().filter((d) => (d.weight ?? 1) > 0).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      if (!pool.length) break;
+      const d = rng.weighted(pool, (x) => x.weight ?? 1);
+      this.takeMod(d);
+      this.dailyRules.push(d.id);
+    }
+    this.fx.push({ t: 'banner', title: 'DÉFI DU JOUR', sub: 'Trois édits imposés. Même seed pour tout le monde.', color: '#ffd23a' });
+  }
+
+  // =================================================================== difficulté
+  /** Multiplicateurs de difficulté selon la profondeur (continue : la boucle et l'Infini l'augmentent sans fin). */
+  difficulty(): { hp: number; dmg: number; rate: number; bspeed: number; budget: number; elite: number } {
+    const d = this.depth(), L = this.loop;
+    return {
+      hp: 1 + 0.035 * d + 0.25 * L,
+      dmg: 1 + 0.012 * Math.max(0, d - 5) + 0.2 * L,
+      rate: 1 + 0.022 * d,
+      bspeed: 1 + 0.01 * d,
+      budget: 5.5 + 0.62 * d + 2.5 * L,
+      elite: 0.025 + 0.017 * d,
+    };
+  }
+  /** Score de la run (tous modes). */
+  score(win = this.mode === 'won'): number {
+    return Math.max(0, Math.round(this.depth() * 120 + this.kills * 5 + this.stats.bosses * 300 + this.coins + (win ? 2500 : 0)));
+  }
+
+  // =================================================================== pactes, dialogues, bulles
+  addPact(p: Pact): void {
+    this.pacts = this.pacts.filter((q) => q.id !== p.id);
+    this.pacts.push(p);
+    this.fx.push({ t: 'banner', title: 'PACTE : ' + p.name, sub: p.desc, color: '#ffb040' });
+  }
+  openDialog(d: Dialog): void {
+    if (!d.lines.length && !d.options?.length) return;
+    this.dialog = d;
+    this.fx.push({ t: 'sfx', id: 'select', vol: 0.5 });
+  }
+  /** L'interface appelle dialogChoose(i) (ou -1 : fermer / annuler). */
+  dialogChoose(i: number): void {
+    const d = this.dialog;
+    if (!d) return;
+    this.dialog = null;
+    let opt = d.options?.[i];
+    if (i < 0) opt = d.options?.find((o) => o.cancel);
+    try { opt?.act?.(); } catch (e) { console.warn('[dialog]', e); }
+    if (!this.dialog) { try { d.onClose?.(); } catch (e) { console.warn('[dialog]', e); } }
+  }
+  say(target: { x: number; y: number }, text: string, dur = 3): void {
+    const old = this.bubbles.find((b) => b.follow === target);
+    if (old) { old.text = text; old.t = old.max = dur; return; }
+    this.bubbles.push({ id: this.nextId++, x: target.x, y: target.y, text, t: dur, max: dur, follow: target });
+    if (this.bubbles.length > 6) this.bubbles.shift();
+  }
+  /** Change le héros d'un joueur (garde ses armes et la proportion de PV). */
+  swapHero(p: Player, heroId: string): boolean {
+    const h = R.heroes.get(heroId);
+    if (!h || p.hero === h) return false;
+    const ratio = p.hp / Math.max(1, this.maxHp(p));
+    p.hero = h;
+    p.hp = Math.max(1, Math.round(ratio * this.maxHp(p)));
+    p.armor = Math.min(p.armor, this.maxArmor(p));
+    p.skillCd = 0; p.skillT = 0;
+    this.fx.push({ t: 'burst', x: p.x, y: p.y, color: 0x58d858, n: 20, speed: 90, life: 0.6 });
+    this.fx.push({ t: 'banner', title: h.name, sub: h.title, color: '#58d858' });
+    return true;
+  }
+
+  // =================================================================== Wassim Hadmi
+  /** Les 3 marchés de cette run (déterministes pour la seed). */
+  wassimDeals(): WassimDeal[] {
+    const pool = dealsFor(this.ctx, this.lead());
+    const rng = new Rng(this.seed).fork('wassim');
+    const deals: WassimDeal[] = [];
+    while (deals.length < 3 && pool.length) { const d = rng.weighted(pool, (x) => x.weight ?? 1); pool.splice(pool.indexOf(d), 1); deals.push(d); }
+    return deals;
+  }
+  private spawnWassim(): void {
+    const c = roomCenter(this.floor.start);
+    const deals = this.wassimDeals();
+    const rng = new Rng(this.seed).fork('wassim-talk');
+    const W = { who: 'Wassim Hadmi', portrait: 'npc_wassim', color: '#ffb040' };
+    const it: Interactable = {
+      id: this.nextId++, kind: 'npc', x: c.x + 38, y: c.y - 20, sprite: 'npc_wassim', label: 'Wassim Hadmi', sub: 'Marchand interdimensionnel (sans patente)', radius: 20, dead: false,
+      data: { wassim: true, deals: deals.map((d) => d.id), lines: WASSIM_IDLE, greet: 'Psst ! Toi ! Viens voir mes marchés !' },
+      use: (_c, pl, self) => {
+        if (self.data.done) { this.say(self, rng.pick(WASSIM_IDLE), 2.5); return; }
+        this.openDialog({
+          lines: [{ ...W, text: rng.pick(WASSIM_GREETINGS) }, { ...W, text: 'J\'ai trois marchés pour toi. Tous démesurés. Tous définitifs. Choisis !' }],
+          options: [
+            ...deals.map((d) => ({ label: d.title, sub: d.pitch, act: () => {
+              this.applyDeal(d, pl);
+              self.data.done = true; self.sub = 'Marché conclu';
+              this.openDialog({ lines: [{ ...W, text: d.accept }] });
+            } })),
+            { label: 'Non merci (reculer lentement)', cancel: true, act: () => {
+              self.data.done = true; self.sub = 'Vexé';
+              this.openDialog({ lines: [{ ...W, text: rng.pick(WASSIM_REFUSE) }] });
+            } },
+          ],
+        });
+      },
+    };
+    this.items.push(it);
+    this.say(it, 'Psst ! Par ici !', 3);
+  }
+  /** Applique un marché de Wassim (isolé : une erreur ne casse pas la run). */
+  applyDeal(d: WassimDeal, p: Player = this.lead()): boolean {
+    try {
+      d.apply(this.ctx, p);
+      this.fx.push({ t: 'sfx', id: 'buy' });
+      this.fx.push({ t: 'burst', x: p.x, y: p.y, color: 0xffb040, n: 16, speed: 80, life: 0.6 });
+      return true;
+    } catch (e) {
+      console.warn('[wassim]', d.id, e);
+      return false;
+    }
+  }
+
+  // =================================================================== salles spéciales
+  private pickSpecial(): SpecialRoomDef | null {
+    if (this.forceSpecial) { const d = SPECIAL_ROOMS.get(this.forceSpecial) ?? null; this.forceSpecial = null; return d; }
+    const rng = this.rng.dungeon.fork(`special-${this.loop}-${this.worldNum}-${this.floorNum}`);
+    if (!rng.chance(this.runMode === 'endless' ? 0.42 : 0.32)) return null;
+    const pool = [...SPECIAL_ROOMS.values()].filter((d) => (d.minDepth ?? 0) <= this.depth() && !this.specialsUsed.includes(d.id)).sort((a, b) => (a.id < b.id ? -1 : 1));
+    if (!pool.length) return null;
+    return rng.weighted(pool, (d) => d.weight ?? 1);
+  }
+  private makeKit(room: Room): RoomKit {
+    const w = this, c = roomCenter(room);
+    const kit: RoomKit = {
+      ctx: this.ctx, room, cx: c.x, cy: c.y, data: {},
+      get player() { return w.lead(); },
+      npc: (x, y, o) => {
+        const it: Interactable = {
+          id: w.nextId++, kind: o.kind ?? 'npc', x, y, sprite: o.sprite, label: o.label, sub: o.sub, radius: o.radius ?? (o.use ? 18 : 0),
+          dead: false, bob: o.bob, tint: o.tint, use: o.use, data: { lines: o.lines, greet: o.greet },
+        };
+        w.items.push(it);
+        return it;
+      },
+      deco: (sprite, x, y, tint) => kit.npc(x, y, { sprite, label: '', radius: 0, tint }),
+      say: (t, text, dur) => w.say(t, text, dur),
+      dialog: (d) => w.openDialog(d),
+      fight: (spawn) => w.lockSpecial(room, spawn),
+      setTile: (tx, ty, t) => {
+        if (tx < 0 || ty < 0 || tx >= w.floor.w || ty >= w.floor.h) return;
+        w.floor.tiles[tx + ty * w.floor.w] = t; w.floor.rev++; w.fx.push({ t: 'tiles' });
+      },
+      once: (k) => { const key = 'once:' + k; if (kit.data[key]) return false; kit.data[key] = true; return true; },
+    };
+    return kit;
+  }
+  /** Salle spéciale (courante par défaut) et sa boîte à outils. */
+  special(room: Room | null = this.curRoom): { def: SpecialRoomDef; kit: RoomKit } | null {
+    return room && room.type === 'special' ? this.kits.get(room.id) ?? null : null;
+  }
+  private hook(id: string, fn: () => void): void {
+    try { fn(); } catch (e) { if (!this.hooksWarned.has(id)) { this.hooksWarned.add(id); console.warn('[salle spéciale]', id, e); } }
+  }
+  /** Verrouille une salle spéciale et lance un combat (boss secret…). */
+  lockSpecial(room: Room, spawn: () => Enemy | null | void): void {
+    if (room.state === 'active') return;
+    room.state = 'active'; room.locked = true; room.waves = 1; room.wave = 1; room.data.fight = true;
+    for (const d of room.doors) this.floor.tiles[d.x + d.y * this.floor.w] = T.DOORC;
+    this.fx.push({ t: 'tiles' }); this.fx.push({ t: 'sfx', id: 'lock' }); this.fx.push({ t: 'shake', a: 3 });
+    const lead = this.lead();
+    for (const p of this.players) if (p !== lead && !this.inRoom(room, p.x, p.y)) { p.x = lead.x; p.y = lead.y; }
+    const e = spawn();
+    if (e && (e.def.boss || e.champion)) { this.boss = e; this.fx.push({ t: 'sfx', id: 'boss' }); }
+    if (!this.enemies.some((x) => !x.dead)) this.clearRoom(room);
   }
 
   loadFloor(): void {
@@ -288,6 +567,8 @@ export class World {
     this.reset();
     this.players = keepPlayers;
     const plan = defaultPlan(this.worldNum, this.floorNum);
+    const sp = this.pickSpecial();
+    if (sp) plan.specials.unshift('special');
     this.rules.emit('onFloorPlan', plan);
     const theme = R.themes.get(this.worldNum);
     this.floor = generateFloor(this.rng.dungeon.fork(`${this.loop}-${this.worldNum}-${this.floorNum}`), plan, theme);
@@ -298,11 +579,23 @@ export class World {
       this.addPet(p);
     });
     this.curRoom = this.floor.start;
+    this.kits.clear();
+    for (const r of this.floor.rooms) {
+      if (r.type !== 'special') continue;
+      if (!sp) { r.type = 'chest'; continue; }
+      r.data.special = sp.id;
+      this.specialsUsed.push(sp.id);
+      this.kits.set(r.id, { def: sp, kit: this.makeKit(r) });
+    }
     this.reveal(this.floor.start);
     for (const pr of this.floor.props) this.props.push({ id: this.nextId++, kind: pr.kind, x: pr.x, y: pr.y, hp: pr.kind === 'barrel' ? 8 : 12, radius: 6, flash: 0, dead: false });
     for (const room of this.floor.rooms) this.populate(room);
     this.fx.push({ t: 'tiles' });
-    this.fx.push({ t: 'banner', title: `${this.worldNum}-${this.floorNum}`, sub: (theme?.name ?? WORLD_NAMES[this.worldNum] ?? '') + (this.loop ? ` · Boucle ${this.loop + 1}` : '') });
+    if (this.runMode === 'endless') {
+      const st = this.depth() + 1;
+      this.fx.push({ t: 'banner', title: `ÉTAGE ${st}`, sub: st > 1 && (st - 1) % 5 === 0 ? ENDLESS_QUIPS[((st - 1) / 5 - 1) % ENDLESS_QUIPS.length] : (theme?.name ?? WORLD_NAMES[this.worldNum] ?? '') });
+    } else this.fx.push({ t: 'banner', title: `${this.worldNum}-${this.floorNum}`, sub: (theme?.name ?? WORLD_NAMES[this.worldNum] ?? '') + (this.loop ? ` · Boucle ${this.loop + 1}` : '') });
+    if (this.worldNum === 1 && this.floorNum === 1 && this.loop === 0) this.spawnWassim();
     this.rules.emit('onFloorStart');
     if ((this.floorNum === 2 || this.floorNum === 4) && allPassives().length) this.offerPassives();
   }
@@ -310,6 +603,7 @@ export class World {
   private populate(room: Room): void {
     const c = roomCenter(room);
     const rng = this.rng.loot;
+    if (room.type === 'special') { const s = this.special(room); if (s) this.hook(s.def.id, () => s.def.build(s.kit)); return; }
     if (room.type === 'chest') this.spawnChest(c.x, c.y, 'big');
     else if (room.type === 'secret') {
       this.spawnChest(c.x, c.y, 'big');
@@ -528,8 +822,15 @@ export class World {
     for (const pet of this.pets) { pet.x = pet.owner.x; pet.y = pet.owner.y; }
     const c = roomCenter(room);
     if (room.type === 'boss') {
-      const bosses = [...R.enemies.values()].filter((d) => d.boss && d.world === this.worldNum);
-      const def = bosses.length ? this.rng.dungeon.pick(bosses) : [...R.enemies.values()].find((d) => d.boss);
+      const all = [...R.enemies.values()].filter((d) => d.boss && d.world > 0).sort((a, b) => a.world - b.world || (a.id < b.id ? -1 : 1));
+      const bosses = all.filter((d) => d.world === this.worldNum);
+      let def = bosses.length ? this.rng.dungeon.pick(bosses) : all[0] ?? [...R.enemies.values()].find((d) => d.boss);
+      if (this.runMode === 'endless' && all.length) {
+        // rotation de tous les Seigneurs ; tous les 4 boss, le boss secret s'invite
+        const k = Math.floor(this.depth() / 5);
+        const secret = [...R.enemies.values()].find((d) => d.boss && d.id.startsWith('boss_secret'));
+        def = secret && k % 4 === 3 ? secret : all[(k - Math.floor((k + 1) / 4)) % all.length];
+      }
       if (def) {
         const e = spawnEnemy(this, def, c.x, c.y - 30, { delay: 1.2 });
         this.boss = e;
@@ -565,14 +866,15 @@ export class World {
     const pool = this.enemyPool();
     if (!pool.length) return;
     const rng = this.rng.combat;
-    let budget = (4 + this.worldNum * 1.5 + this.floorNum * 0.8 + this.loop * 3) * this.mods.enemyCount * budgetMult * (this.players.length > 1 ? 1.3 : 1) * rng.range(0.85, 1.15);
+    const diff = this.difficulty();
+    let budget = diff.budget * this.mods.enemyCount * budgetMult * (this.players.length > 1 ? 1.3 : 1) * rng.range(0.85, 1.15);
     budget *= Math.min(1.3, (room.w * room.h) / 190);
-    const eliteChance = 0.03 + 0.012 * this.depth() + this.mods.eliteChance;
+    const eliteChance = diff.elite + this.mods.eliteChance;
     let n = 0;
     while (budget >= 1 && n < 26 && this.enemies.length < 70) {
       const afford = pool.filter((d) => (d.cost ?? 1) <= budget);
       if (!afford.length) break;
-      const def = rng.weighted(afford, (d) => 1 / Math.sqrt(d.cost ?? 1));
+      const def = rng.weighted(afford, (d) => (d.weight ?? (d.id.startsWith('elite_') ? 0.25 : 1)) / Math.sqrt(d.cost ?? 1));
       const pos = this.freeSpot(room, 75);
       spawnEnemy(this, def, pos.x, pos.y, { elite: rng.chance(eliteChance), delay: 0.7 + n * 0.04 });
       budget -= (def.cost ?? 1) / (this.mods.enemyCount > 1.5 ? 1 : 1);
@@ -591,7 +893,7 @@ export class World {
     for (const b of this.bullets) if (b.team === 'enemy') b.dead = true;
     const c = roomCenter(room);
     const spot = this.isFree(c.x, c.y + 8, 7) ? { x: c.x, y: c.y + 8 } : this.freeSpot(room);
-    const special = room.type === 'boss' || room.type === 'guardian';
+    const special = room.type === 'boss' || room.type === 'guardian' || !!room.data?.fight;
     this.spawnChest(spot.x, spot.y, special ? 'big' : this.rng.loot.chance(0.3) ? 'weapon' : 'supply');
     this.rules.emit('onRoomClear', room);
     if (room.exit && !special) this.spawnPortal(room);
@@ -600,7 +902,7 @@ export class World {
   spawnPortal(room: Room): void {
     const c = roomCenter(room);
     const spot = this.isFree(c.x, c.y - 26, 8) ? { x: c.x, y: c.y - 26 } : c;
-    const final = this.floorNum === 5 && this.worldNum === 3;
+    const final = this.floorNum === 5 && this.worldNum === 3 && this.runMode !== 'endless';
     this.items.push({
       id: this.nextId++, kind: 'portal', x: spot.x, y: spot.y, sprite: 'portal', label: final ? 'Portail de sortie' : 'Portail', sub: final ? 'Quitter le donjon, victorieux' : 'Descendre à l\'étage suivant',
       radius: 16, dead: false, bob: true, use: (_c, _p, self) => { self.dead = true; this.nextFloor(); },
@@ -610,11 +912,16 @@ export class World {
   }
 
   nextFloor(): void {
+    const prevWorld = this.worldNum;
     if (this.floorNum >= 5) {
-      if (this.worldNum >= 3) { this.finish(true); return; }
-      this.worldNum++; this.floorNum = 1;
+      if (this.worldNum >= 3) {
+        if (this.runMode !== 'endless') { this.finish(true); return; }
+        this.loop++; this.worldNum = 1;
+      } else this.worldNum++;
+      this.floorNum = 1;
     } else this.floorNum++;
     this.loadFloor();
+    if (this.runMode === 'story' && this.loop === 0 && this.worldNum !== prevWorld && INTERLUDES[prevWorld]) this.request = { type: 'scene', data: prevWorld };
   }
   /** Après une victoire : repartir au monde 1 avec les mêmes édits, ennemis renforcés. */
   continueLoop(): void {
@@ -711,8 +1018,22 @@ export class World {
       time: this.time, kills: this.kills, coins: this.coins, gems: earned,
       rules: this.rules.ofKind('rule').map((i) => i.def.id), synergies: this.rules.ofKind('synergy').map((i) => i.def.id),
       passives: this.rules.ofKind('passive').map((i) => i.def.id), damage: Math.round(this.stats.damage), rooms: this.stats.rooms, bosses: this.stats.bosses,
+      mode: this.runMode, score: this.score(win), stage: this.depth() + 1, best: 0, newRecord: false,
+      ending: win && this.runMode === 'story' && this.loop === 0, daily: [...this.dailyRules],
     };
     const s = this.save;
+    const recs = (s.records ??= {});
+    const sum = this.summary;
+    const entry = { score: sum.score, stage: sum.stage, hero: sum.hero, kills: this.kills, time: Math.round(this.time) };
+    if (this.runMode === 'endless') {
+      sum.best = recs.endless?.score ?? 0;
+      if (sum.score > sum.best) { recs.endless = entry; sum.newRecord = true; }
+    } else if (this.runMode === 'daily') {
+      const same = recs.daily?.seed === this.seed;
+      sum.best = same ? recs.daily!.score : 0;
+      if (!same || sum.score > sum.best) { recs.daily = { seed: this.seed, ...entry }; sum.newRecord = true; }
+      if (win) recs.dailyWon = (recs.dailyWon ?? 0) + 1;
+    } else if (win) recs.storyWins = (recs.storyWins ?? 0) + 1;
     s.gems += earned;
     s.stats.kills += this.kills;
     if (win) s.stats.wins++;
@@ -724,14 +1045,22 @@ export class World {
 
   // =================================================================== boucle
   update(dt: number): void {
-    if (this.choice || this.mode === 'dead' || this.mode === 'won') return;
+    if (this.choice || this.dialog || this.mode === 'dead' || this.mode === 'won') return;
     if (this.hitstop > 0) { this.hitstop -= dt; return; }
     this.tick++;
     if (this.mode === 'run') this.time += dt;
     this.explosions = 0;
 
     // --- Mods de la frame (repart de zéro : aucun état ne dérive)
-    const m = clampMods(this.rules.apply(baseMods()));
+    const m = this.rules.apply(baseMods());
+    if (this.mode === 'run') {
+      const k = this.difficulty();
+      m.enemyHp *= k.hp; m.enemyDamage *= k.dmg; m.enemyFireRate *= k.rate; m.enemyBulletSpeed *= k.bspeed;
+    }
+    for (const pact of this.pacts) if (pact.modify) this.hook('pacte:' + pact.id, () => pact.modify!(m, this.ctx));
+    const sp = this.mode === 'run' ? this.special() : null;
+    if (sp?.def.modify && this.inRoom(sp.kit.room, this.lead().x, this.lead().y)) this.hook(sp.def.id, () => sp.def.modify!(m, sp.kit));
+    clampMods(m);
     this.mods = m;
     for (const p of this.players) {
       const pm: Mods = { ...m, flags: { ...m.flags } };
@@ -760,6 +1089,8 @@ export class World {
     for (const p of this.players) this.updatePlayer(p, dt);
     if (this.mode !== 'run' && this.mode !== 'hub') return;
     this.updateRooms();
+    this.updateNpcs(dt);
+    if (this.dialog) return;
     if (this.curRoom && this.enemies.length && (this.flowT -= dt) <= 0) {
       this.flowT = 0.2;
       const l = this.lead();
@@ -790,7 +1121,18 @@ export class World {
     if (room && room !== this.curRoom) {
       this.curRoom = room;
       this.flow = null;
-      if (!room.visited) { this.reveal(room); this.rules.emit('onRoomEnter', room); }
+      if (!room.visited) {
+        this.reveal(room); this.rules.emit('onRoomEnter', room);
+        const s = this.special(room);
+        if (s) {
+          this.fx.push({ t: 'banner', title: s.def.name.toUpperCase(), sub: 'Salle spéciale', color: '#ff70b8' });
+          this.fx.push({ t: 'sfx', id: 'secret' });
+          const sv = (this.save.flags ??= {});
+          const found: string[] = (sv.rooms ??= []);
+          if (!found.includes(s.def.id)) found.push(s.def.id);
+          if (s.def.enter) this.hook(s.def.id, () => s.def.enter!(s.kit));
+        }
+      }
     }
     const r = this.curRoom;
     if (!r) return;
@@ -805,6 +1147,56 @@ export class World {
         else this.clearRoom(r);
       }
     }
+  }
+
+  /** PNJ : bulles, salutations, déambulation, Wassim, mannequins, salles spéciales. */
+  private updateNpcs(dt: number): void {
+    for (const b of this.bubbles) { b.t -= dt; if (b.follow) { b.x = b.follow.x; b.y = b.follow.y; if (b.follow.dead) b.t = 0; } }
+    if (this.bubbles.some((b) => b.t <= 0)) this.bubbles = this.bubbles.filter((b) => b.t > 0);
+    const l = this.lead();
+    if (!l) return;
+    const room = this.mode === 'hub' ? this.floor.start : this.curRoom;
+    const time = this.tick / 60;
+    const talkers: Interactable[] = [];
+    for (const it of this.items) {
+      if (it.dead || !it.data) continue;
+      if (it.data.wander) it.x = it.data.home + Math.sin(time * 0.6 + it.id) * it.data.wander;
+      if (!it.data.lines && !it.data.greet) continue;
+      if (room && !this.inRoom(room, it.x, it.y)) continue;
+      talkers.push(it);
+      const d = Math.hypot(it.x - l.x, it.y - l.y);
+      if (it.data.greet && !it.data.near && d < 48) { it.data.near = true; this.say(it, it.data.greet, 2.6); }
+      else if (it.data.near && d > 80) it.data.near = false;
+    }
+    if ((this.ambientT -= dt) <= 0 && talkers.length) {
+      this.ambientT = this.rng.combat.range(2.8, 5.5);
+      const it = this.rng.combat.pick(talkers);
+      const lines: string[] | undefined = it.data.lines;
+      if (lines?.length && !this.bubbles.some((b) => b.follow === it)) this.say(it, this.rng.combat.pick(lines), 3);
+    }
+    if (this.mode === 'hub') {
+      // compteur de dégâts des mannequins (toute la casse au hall vient d'eux)
+      const D = this.dps;
+      if ((D.t += dt) >= 0.5) {
+        D.t = 0;
+        D.hist.push(this.stats.damage - D.last); D.last = this.stats.damage;
+        if (D.hist.length > 6) D.hist.shift();
+        const sum = D.hist.reduce((a, b) => a + b, 0);
+        const dummy = this.enemies.find((e) => !e.dead && e.def.id === 'dummy');
+        if (dummy && D.hist[D.hist.length - 1] > 0) this.say(dummy, `${Math.round(sum / (D.hist.length * 0.5))} dégâts/s`, 1.2);
+      }
+      return;
+    }
+    // Wassim disparaît quand on quitte la salle de départ
+    const w = this.items.find((i) => !i.dead && i.data?.wassim);
+    if (w && this.curRoom !== this.floor.start) {
+      w.dead = true;
+      this.fx.push({ t: 'burst', x: w.x, y: w.y, color: 0xc070ff, n: 22, speed: 90, life: 0.6 });
+      this.fx.push({ t: 'sfx', id: 'portal', vol: 0.5 });
+      this.say({ x: w.x, y: w.y }, this.rng.combat.pick(WASSIM_BYE), 2);
+    }
+    const s = this.special();
+    if (s?.def.tick && this.inRoom(s.kit.room, l.x, l.y)) this.hook(s.def.id, () => s.def.tick!(s.kit, dt));
   }
 
   private updatePlayer(p: Player, dt: number): void {
@@ -838,7 +1230,7 @@ export class World {
     const damp = Math.exp(-10 * dt);
     p.kx *= damp; p.ky *= damp;
     if (hitWall && m.wallDamage > 0 && p.moving) damagePlayer(this, p, m.wallDamage, 'wall');
-    if (tile === T.HAZARD && this.mode === 'run') {
+    if (tile === T.HAZARD && this.mode === 'run' && !m.hazardImmune) {
       p.data.hz = (p.data.hz ?? 0.3) - dt;
       if (p.data.hz <= 0) { p.data.hz = 0.8; damagePlayer(this, p, 1, 'hazard'); }
     } else p.data.hz = 0.3;
@@ -887,7 +1279,9 @@ export class World {
       else p.weapons[i].cd -= dt;
     }
     // --- compétence
-    if (inp.skill && p.skillCd <= 0 && this.mode === 'run') {
+    const tz = this.trainZone;
+    const canSkill = this.mode === 'run' || (this.mode === 'hub' && p.x > tz.x0 && p.x < tz.x1 && p.y > tz.y0 && p.y < tz.y1);
+    if (inp.skill && p.skillCd <= 0 && canSkill) {
       p.skillCd = hero.skill.cooldown * m.skillCd;
       p.skillT = hero.skill.duration ?? 0;
       hero.skill.use(this.ctx, p);

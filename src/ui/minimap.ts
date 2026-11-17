@@ -5,7 +5,7 @@ import { GRID_W, GRID_H } from '../sim/dungeon';
 
 const CELL_W = 26, CELL_H = 20;
 const ROOM_COLORS: Record<string, string> = {
-  start: '#c8d0e0', combat: '#8a93a8', chest: '#ffd23a', shop: '#58d858', statue: '#48a8ff', secret: '#c070ff', guardian: '#ff9a30', boss: '#ff4455', hub: '#8a93a8',
+  start: '#c8d0e0', combat: '#8a93a8', chest: '#ffd23a', shop: '#58d858', statue: '#48a8ff', secret: '#c070ff', guardian: '#ff9a30', boss: '#ff4455', hub: '#8a93a8', special: '#ff70b8',
 };
 // Pictogrammes 5×5 (1 = pixel sombre posé sur la salle).
 const GLYPH: Record<string, string[]> = {
@@ -16,6 +16,7 @@ const GLYPH: Record<string, string[]> = {
   guardian: ['10001', '01010', '00100', '01010', '10001'],
   boss: ['01110', '10101', '11111', '01110', '01010'],
   start: ['10000', '11110', '11100', '10000', '10000'],
+  special: ['00100', '01010', '10101', '01010', '00100'],
   exit: ['01110', '10001', '10101', '10001', '01110'],
 };
 

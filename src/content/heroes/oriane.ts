@@ -1,16 +1,34 @@
 // Oriane l'Égide : bulle protectrice qui annule les dégâts et dissout les balles proches.
-import { defineHero, defineSprite } from '../../core/registry';
+import { defineHero } from '../../core/registry';
+import { heroArt, legs } from './_kit';
 
 const BUBBLE_R = 40;
 
-defineSprite('hero_oriane', [
-  '...yyyyyy...', '..iiiiiiii..', '.iiIssssIii.', '.iIs0ss0sIi.', '.iIssssssIi.', '..iIIIIIIi..', '.ciiiyyiiic.',
-  '.ciiiiiiiic.', 'cCiiiiiiiiCc', '.CiiiiiiiiC.', '..iiiiiiii..', '..IIIIIIII..', '..2I....I2..', '..00....00..',
-], {
-  frames: [[
-    '...yyyyyy...', '..iiiiiiii..', '.iiIssssIii.', '.iIs0ss0sIi.', '.iIssssssIi.', '..iIIIIIIi..', '.ciiiyyiiic.',
-    '.ciiiiiiiic.', 'cCiiiiiiiiCc', '.CiiiiiiiiC.', '..iiiiiiii..', '..IIIIIIII..', '...2I..I2...', '...00..00...',
-  ]],
+// Paladine de verre soufflé : auréole dorée, heaume translucide, cape cyan, reflets blancs.
+heroArt('oriane', {
+  pal: { u: '#6a8ab8' },
+  base: [
+    '..............',
+    '....yyyyyy....',
+    '...y......y...',
+    '....i1iiii....',
+    '...i1iiiiIi...',
+    '...iIssssIi...',
+    '...iIs0s0Ii...',
+    '...IiSsssiI...',
+    '..CciiyyiiI...',
+    '.Cc1iiyyiiIC..',
+    '.CciiiiiiiIIC.',
+    '.Csiyyyyyyis..',
+    '.C.iiiIIIii.C.',
+    '...uIu..uIu...',
+    '....Iu..uI....',
+    '...II...II....',
+  ],
+  waist: 11,
+  walk: legs('u', 'I', 4, [{ 12: 'C..iiiIIIii..C' }, { 12: '.C.iiiIIIii.C.' }, { 12: 'C..iiiIIIii..C' }]),
+  bob: [false, true, false],
+  blink: { 6: '...iIsSsSIi...' },
 });
 
 defineHero({

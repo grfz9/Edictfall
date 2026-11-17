@@ -90,3 +90,53 @@ definePet({
   id: 'pet_givrelin', name: 'Givrelin', desc: 'Un esprit du gel dont les flocons figent les ennemis.', sprite: 'pet_givrelin', cost: 120, speed: 115,
   attack: { cooldown: 1.1, range: 160, bullet: { damage: 5, speed: 180, sprite: 'b_energy', color: 0xd8f0ff, scale: 0.7, life: 1, status: { kind: 'freeze', dur: 1.2 } } },
 });
+
+// ------------------------------------------------------------------ Glouglou : bulles qui éclatent (petite zone)
+defineSprite('pet_glouglou', [
+  '..1iii....', '.i1....i..', 'i..oo...i.', 'i.oyoO.oi.', 'i.o0ooOOi.', 'i..oOo..i.', '.ic....ci.', '..CCCCCC..',
+], {
+  frames: [
+    ['..1iii....', '.i1..c.i..', 'i...oo..i.', 'io.oyoO.i.', 'iOOo0oo.i.', 'i...oOo.i.', '.ic....ci.', '..CCCCCC..'],
+    ['..1iii....', '.i1....i..', 'i..oo.c.i.', 'i.oyoO.oi.', 'i.o0ooOOi.', 'i..oOo..i.', '.ic....ci.', '..CCCCCC..'],
+  ],
+});
+definePet({
+  id: 'pet_glouglou', name: 'Glouglou', desc: 'Un poisson rouge dans un bocal volant. Ses bulles éclatent en mini-geyser.',
+  sprite: 'pet_glouglou', cost: 60, speed: 110,
+  attack: {
+    cooldown: 1.3, range: 140,
+    bullet: { damage: 3, speed: 130, drag: 0.6, sprite: 'b_energy', color: 0x9ae8ff, scale: 0.8, life: 1.1, explode: { radius: 16, damage: 4 } },
+  },
+});
+
+// ------------------------------------------------------------------ Ombrelle : gobe une balle ennemie de temps en temps
+const OMBRELLE_CD = 5;
+defineSprite('pet_ombrelle', [
+  '...mm.....', '.mMmmMm...', 'mMm1mmMm..', 'MmMmMmMm..', '..0..0....', '....n.....', '....n.....', '...nn.....',
+], {
+  frames: [
+    ['...mm.....', '.mMmmMm...', 'mMm1mmMm..', 'MmMmMmMm..', '..0..0....', '....n.....', '....n.....', '....nn....'],
+    ['..mm......', 'mMmmMm....', 'Mm1mmMm...', 'mMmMmMm...', '.0..0.....', '...n......', '...n......', '..nn......'],
+  ],
+});
+definePet({
+  id: 'pet_ombrelle', name: 'Ombrelle', desc: 'Une ombrelle vivante et snob. Elle gobe une balle visant son maître toutes les 5 s.',
+  sprite: 'pet_ombrelle', cost: 140, speed: 125,
+  onUpdate: (ctx, pet, dt) => {
+    if (ctx.world.mode !== 'run') return;
+    pet.data.t = Math.max(0, (pet.data.t ?? 0) - dt);
+    if (pet.data.t > 0) return;
+    const o = pet.owner;
+    if (o.downed) return;
+    for (const b of ctx.bullets) {
+      if (b.dead || b.team !== 'enemy' || b.kind === 'beam') continue;
+      if (Math.hypot(b.x - o.x, b.y - o.y) > 26) continue;
+      b.dead = true;
+      pet.data.t = OMBRELLE_CD;
+      ctx.burst(b.x, b.y, 0xff70b8, 8, 60, 0.3);
+      ctx.text(pet.x, pet.y - 10, 'Pff.', 0xff70b8);
+      ctx.sfx('armor', 0.5);
+      return;
+    }
+  },
+});

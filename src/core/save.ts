@@ -14,6 +14,8 @@ export function defaultSave(): SaveData {
     stats: { runs: 0, wins: 0, kills: 0, best: '', bosses: 0 },
     seenRules: [],
     seenSynergies: [],
+    flags: {},
+    records: {},
   };
 }
 export function loadSave(): SaveData {
@@ -25,6 +27,8 @@ export function loadSave(): SaveData {
       Object.assign(d, p);
       d.options = { ...defaultSave().options, ...(p.options ?? {}) };
       d.stats = { ...defaultSave().stats, ...(p.stats ?? {}) };
+      d.flags = { ...(p.flags ?? {}) };
+      d.records = { ...(p.records ?? {}) };
     }
   } catch {
     /* sauvegarde corrompue : on repart des valeurs par défaut */

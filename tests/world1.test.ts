@@ -72,9 +72,20 @@ describe('Monde 1 — Sylve Murmurante', () => {
         }
       }
     }
-    const boss = R.sprites.get('boss_souche')!;
-    expect(boss.px[0].length).toBeGreaterThanOrEqual(24);
-    expect(boss.px.length).toBeGreaterThanOrEqual(24);
+    // boss : grand sprite, une apparence par phase, 4 frames chacune
+    const looks = ['boss_souche', ...R.enemies.get('boss_souche')!.boss!.phases.map((p) => p.sprite).filter(Boolean)] as string[];
+    expect(new Set(looks).size).toBe(3);
+    for (const id of looks) {
+      const s = R.sprites.get(id)!;
+      expect(s, id).toBeTruthy();
+      expect(s.px[0].length, id).toBeGreaterThanOrEqual(32);
+      expect(s.px.length, id).toBeGreaterThanOrEqual(32);
+      expect(1 + (s.frames?.length ?? 0), id).toBeGreaterThanOrEqual(4);
+      for (const f of [s.px, ...(s.frames ?? [])]) for (const row of f) {
+        expect(row.length, `${id} : "${row}"`).toBe(s.px[0].length);
+        for (const ch of row) if (ch !== '.') expect(ch in PAL || !!s.pal?.[ch], `${id} : '${ch}'`).toBe(true);
+      }
+    }
   });
 
   it('patterns référencés existants, invocations définies, dégâts du monde 1', () => {
@@ -108,8 +119,9 @@ describe('Monde 1 — Sylve Murmurante', () => {
     });
   });
 
-  it('boss : télégraphes ≥ 0.4 s, PV ≈ 620, durée théorique à DPS 25', () => {
-    expect(boss.hp).toBe(620);
+  it('boss : télégraphes ≥ 0.4 s, PV +35-50 % (≈ 880), durée théorique à DPS 25', () => {
+    expect(boss.hp).toBeGreaterThanOrEqual(840);
+    expect(boss.hp).toBeLessThanOrEqual(930);
     for (const ph of boss.boss!.phases) for (const a of ph.attacks) expect(a.telegraph ?? 0.35).toBeGreaterThanOrEqual(0.4);
     // Tir continu à 25 DPS (100 % de présence) : l'écorce durcie rallonge le combat.
     const r = trial('boss_souche', 0);
@@ -124,6 +136,6 @@ describe('Monde 1 — Sylve Murmurante', () => {
     }
     console.log(`Souche-Roi : ${t.toFixed(1)} s de tir ininterrompu à 25 DPS (étage 1)`);
     expect(e.dead).toBe(true);
-    expect(t).toBeGreaterThan(24);
+    expect(t).toBeGreaterThan(30);
   });
 });

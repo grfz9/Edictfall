@@ -15,7 +15,7 @@ export function baseMods(): Mods {
     enemyFireRate: 1, eliteChance: 0,
     coinMult: 1, coinMagnet: 1, shopPrice: 1, energyDrop: 1, gemMult: 1, mimicChance: 0,
     chestRarityBonus: 0, healMult: 1,
-    timeScale: 1, wallDamage: 0, bulletMagnet: 0, explosionSize: 1,
+    timeScale: 1, wallDamage: 0, hazardImmune: false, bulletMagnet: 0, explosionSize: 1,
     zoom: 1, darkness: 0, mirror: false, grayscale: 0, tint: 0xffffff, shake: 1,
     flags: {},
   };

@@ -1,14 +1,35 @@
 // Vesna la Lame-Vent : ruée invulnérable qui taillade tout sur son passage.
-import { defineHero, defineSprite } from '../../core/registry';
+import { defineHero } from '../../core/registry';
+import { heroArt, legs } from './_kit';
 
-defineSprite('hero_vesna', [
-  '....mmmm....', '...mmmmmm...', '..mmssssm...', '..ms0ss0m...', '..mssssss...', 'rrrrrrrr....', '.r.rr555r...',
-  '....5555....', '...555555...', '...5r55r5...', '....5555....', '...55..55...', '..55....55..', '..00....00..',
-], {
-  frames: [[
-    '....mmmm....', '...mmmmmm...', '..mmssssm...', '..ms0ss0m...', '..mssssss...', '.rrrrrrr....', 'r..rr555r...',
-    '....5555....', '...555555...', '...5r55r5...', '....5555....', '....5555....', '...55..55...', '...00..00...',
-  ]],
+// Lame-vent : queue de cheval rose, écharpe rouge qui claque au vent, tenue sombre ajustée.
+heroArt('vesna', {
+  base: [
+    '..............',
+    '.....mmmm.....',
+    '...MmmmmmmM...',
+    '..MMmmsssmm...',
+    '..Mms0ss0sm...',
+    '.MM.mssSss....',
+    '.M...sss......',
+    'rrRrrrrrrr....',
+    '..rR45555r....',
+    '...4555r55....',
+    '..s45555554s..',
+    '....4rrrr4....',
+    '....455554....',
+    '....54..45....',
+    '....5....5....',
+    '...00....00...',
+  ],
+  waist: 11,
+  walk: legs('5', '0', 4, [
+    { 7: '.rrRrrrrrrr...', 8: 'r.rR45555r....', 5: '.MM.mssSss....', 6: 'MM...sss......' },
+    { 7: 'RrrRrrrrrr....', 8: '.r.R45555r....' },
+    { 7: '.rRrrrrrrr....', 8: 'rr.R45555r....', 6: 'MM...sss......' },
+  ]),
+  bob: [false, true, false],
+  blink: { 4: '..MmsSssSsm...' },
 });
 
 defineHero({

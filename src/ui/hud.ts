@@ -2,12 +2,12 @@
 import type { Game } from '../main';
 import type { Player, Interactable, Enemy } from '../core/types';
 import { RARITY_COLORS, RARITY_NAMES } from '../core/damage';
-import { WORLD_NAMES } from '../sim/world';
+import { WORLD_NAMES, MODE_NAMES } from '../sim/world';
 import { $, esc, fillIcons, pix, pixUrl, replay, instStats, fmt, modKindLabel, spriteFit } from './dom';
 import { Minimap } from './minimap';
 
 /** Options d'affichage propres à l'UI, rangées dans save.options (champ supplémentaire, ignoré par le reste du jeu). */
-export type UIOptions = { showFps?: boolean };
+export type UIOptions = { showFps?: boolean; perf?: 'auto' | 'on' | 'off' };
 export const uiOpts = (g: Game) => g.save.options as Game['save']['options'] & UIOptions;
 
 class StatBar {
@@ -150,7 +150,9 @@ export class Hud {
     this.set('#h-gems', String(run ? w.gems : g.save.gems));
     $('.money', this.el).classList.toggle('hub', !run);
     this.set('#h-floor', run
-      ? `<b>${w.worldNum}-${w.floorNum}</b><span>${esc(WORLD_NAMES[w.worldNum] ?? '')}</span>${w.loop ? `<em title="Boucle">${pix('loop', 1)}${w.loop + 1}</em>` : ''}`
+      ? (w.runMode === 'endless'
+        ? `<b>Ét. ${w.depth() + 1}</b><span>Infini · ${esc(WORLD_NAMES[w.worldNum] ?? '')}</span><em title="Score">${w.score()}</em>`
+        : `<b>${w.worldNum}-${w.floorNum}</b><span>${w.runMode === 'daily' ? 'Défi · ' : ''}${esc(WORLD_NAMES[w.worldNum] ?? '')}</span>${w.loop ? `<em title="Boucle">${pix('loop', 1)}${w.loop + 1}</em>` : ''}`)
       : '<b>LE HALL</b>');
 
     this.weapons(p);
@@ -293,7 +295,7 @@ export class Hud {
     if (w.mode !== 'hub') { this.set('#h-hub', ''); return; }
     const coop = w.players.length > 1;
     const touch = g.input.device === 'touch';
-    const html = `<div class="hub-hint">Approche un héros pour le choisir · Entre dans le portail pour partir</div>
+    const html = `<div class="hub-hint">Mode : <b class="hub-mode">${esc(MODE_NAMES[w.hubMode])}</b> (tableau des défis) · Approche un héros pour le choisir · Portail pour partir</div>
       <div class="hub-coop"><button class="hbtn coop" data-hud="coop">${coop ? '− Retirer J2' : '+ Joueur 2'}${touch ? '' : ' <kbd>C</kbd>'}</button>
       ${coop ? '<span class="coop-keys">J2 : flèches · <kbd>Entrée</kbd> interagir · <kbd>Ctrl dr.</kbd> tirer · <kbd>Maj dr.</kbd> compétence · <kbd>/</kbd> arme — ou une manette</span>' : '<span class="coop-keys">Coop locale : clavier partagé ou manette</span>'}</div>`;
     this.set('#h-hub', html);

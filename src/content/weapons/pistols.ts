@@ -8,7 +8,7 @@
 // pistol_magnum    | 3      | 57.8 (perce 2)            | 11.1
 // pistol_echo      | 4      | 55 + écho 50 % = 82.5     | 15.0
 import { defineWeapon } from '../../core/registry';
-import { spr } from './_helpers';
+import { spr, muzzleFx } from './_helpers';
 
 // ------------------------------------------------------------------ balles
 spr('b_ice', ['.ii..', 'iI1ic', '.ii..']);
@@ -16,25 +16,26 @@ spr('b_echo', ['.pp.', 'p11p', 'p11p', '.pp.'], { outline: '#3a1a5a' });
 spr('b_magnum', ['.yyy..', 'yY111y', '.yyy..']);
 
 // ------------------------------------------------------------------ armes
-spr('w_pistol_pebble', ['.3333333', '3a2222a.', '3aa.....', '.N......'], { ox: 1, oy: 2 });
+spr('w_pistol_pebble', ['..333333..', '.3a22222a1', '.3aaaaaa3.', '.3a4N.....', '..4N......'], { ox: 1, oy: 2 });
 defineWeapon({
   id: 'pistol_pebble', name: 'Pétoire de poche', desc: 'Petite, nerveuse, et persuadée d\'être une grande.', rarity: 0, type: 'pistol',
   sprite: 'w_pistol_pebble', energy: 0, cooldown: 0.22, damage: 4, jitter: 0.06, recoil: 2, shake: 0.5, sfx: 'pew', muzzle: 0xfff0a0,
-  bullet: { speed: 250, sprite: 'b_small', life: 0.9 },
+  bullet: { speed: 250, sprite: 'b_pellet', life: 0.9, trail: 0xfff0a0 },
 });
 
-spr('w_pistol_twin', ['.YYYYYY.', 'Ynnnnnn.', 'YYYYYYY.', 'Ynnnnnn.', '.NN.....', '.N......'], { ox: 1, oy: 3 });
+spr('w_pistol_twin', ['..YYYYYYY.', '.Yy11yyyyY', '.YYYYYYYY.', '.Yy1yyyyyY', '.YYYYYYY..', '.Nn4......', '..Nn......'], { ox: 1, oy: 3 });
 defineWeapon({
   id: 'pistol_twin', name: 'Jumelles de cuivre', desc: 'Deux canons, un seul cerveau. Le vôtre.', rarity: 0, type: 'pistol',
-  sprite: 'w_pistol_twin', energy: 1, cooldown: 0.3, damage: 3, count: 2, spread: 0.12, recoil: 3, shake: 0.6, muzzle: 0xffd23a,
-  bullet: { speed: 240, sprite: 'b_small', life: 1 },
+  sprite: 'w_pistol_twin', energy: 1, cooldown: 0.3, damage: 3, count: 2, spread: 0.12, recoil: 3, kick: 5, shake: 0.6, muzzle: 0xffd23a,
+  bullet: { speed: 240, sprite: 'b_pellet', life: 1, trail: 0xffd23a },
 });
 
-spr('w_pistol_revolver', ['..44444444a', '.4aaaaaaaa4', '4aYYa444444', '4nnN.......', '.nn........', '.NN........'], { ox: 2, oy: 3 });
+spr('w_pistol_revolver', ['...44444444a', '..4a2222222a', '.4aYYa4444a.', '.4Y1Ya......', '.4aYYa......', '.nnN........', '.nN.........', '..N.........'], { ox: 2, oy: 3 });
 defineWeapon({
   id: 'pistol_revolver', name: 'Barillet grincheux', desc: 'Un coup par clic, et il râle à chaque fois.', rarity: 1, type: 'pistol',
   sprite: 'w_pistol_revolver', energy: 2, cooldown: 0.4, damage: 11, crit: 0.15, auto: false, recoil: 5, kick: 15, shake: 1.6, muzzle: 0xffe070,
-  bullet: { speed: 320, sprite: 'b_round', life: 1.1, knockback: 60 },
+  bullet: { speed: 320, sprite: 'b_slug', life: 1.1, knockback: 60, trail: 0xffe070 },
+  onFire: (ctx, ev) => muzzleFx(ctx, ev, 0xffe070, 4, 5),
 });
 
 spr('w_pistol_ricochet', ['..tttttt.', '.tTccccTt', 'tT2TTTT..', 'tN.......', '.N.......'], { ox: 1, oy: 3 });
@@ -55,7 +56,8 @@ spr('w_pistol_magnum', ['...44444444444', '..4aaaaaaaaaa4', '.4a1aaaaaaaaa4', '4
 defineWeapon({
   id: 'pistol_magnum', name: 'Magnum du Notaire', desc: 'Chaque balle est un acte authentique, signé et tamponné.', rarity: 3, type: 'pistol',
   sprite: 'w_pistol_magnum', energy: 5, cooldown: 0.45, damage: 26, crit: 0.15, auto: false, recoil: 7, kick: 40, shake: 3, sfx: 'thud', muzzle: 0xffc04a,
-  bullet: { speed: 380, sprite: 'b_magnum', life: 1.2, pierce: 2, knockback: 120 },
+  bullet: { speed: 380, sprite: 'b_magnum', life: 1.2, pierce: 2, knockback: 120, trail: 0xffc04a },
+  onFire: (ctx, ev) => { muzzleFx(ctx, ev, 0xffc04a, 7, 8); ctx.hitstop(0.02); },
   unlock: 40,
 });
 

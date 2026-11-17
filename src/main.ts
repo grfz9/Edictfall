@@ -3,8 +3,8 @@ import './ui/style.css';
 import { R } from './core/registry';
 import { loadSave, storeSave } from './core/save';
 import { randomSeedString } from './core/rng';
-import type { SaveData } from './core/types';
-import { World } from './sim/world';
+import type { SaveData, RunMode, ModifierDef } from './core/types';
+import { World, dailySeedFor, MODE_NAMES } from './sim/world';
 import { botInput } from './sim/bot';
 import { Renderer } from './render/renderer';
 import { Input } from './input/input';
@@ -46,6 +46,8 @@ export class Game {
     this.applyOptions();
     this.world.startHub();
     this.setState('title');
+    // premier lancement : la cinématique d'introduction passe avant l'écran titre
+    if (!this.save.flags?.introSeen) this.ui.playIntro();
     this.last = performance.now();
     const loop = (now: number) => { this.frame(now); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
@@ -57,6 +59,8 @@ export class Game {
     this.audio.setVolumes(o.sfx, o.music);
     this.renderer.shakeOpt = o.shake;
     this.renderer.showNumbers = o.damageNumbers;
+    const perf = (o as { perf?: 'auto' | 'on' | 'off' }).perf;
+    if (perf && 'perfMode' in this.renderer) (this.renderer as { perfMode: string }).perfMode = perf;
     this.input.setTouchMode(o.touch);
     storeSave(this.save);
   }
@@ -76,12 +80,43 @@ export class Game {
     this.coopHero = null;
     this.setState('play');
   }
-  startRun(seed?: string): void {
-    const s = (seed ?? this.seedText).trim().toUpperCase() || randomSeedString();
+  startRun(seed?: string, mode: RunMode = this.world.hubMode): void {
+    let s = (seed ?? this.seedText).trim().toUpperCase() || randomSeedString();
+    if (mode === 'daily' && seed === undefined) s = this.dailySeed();
     const heroes = [this.world.players[0]?.hero.id ?? this.save.hero];
     if (this.coopHero) heroes.push(this.coopHero);
-    this.world.startRun(s, heroes);
+    this.world.startRun(s, heroes, mode);
     this.setState('play');
+  }
+  /** Seed du défi quotidien (date locale). */
+  dailySeed(): string {
+    const d = new Date();
+    return dailySeedFor(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+  private dailyCache: { seed: string; defs: ModifierDef[] } | null = null;
+  /** Aperçu des 3 édits imposés du jour (simulation jetable, même tirage que la vraie run). */
+  dailyPreview(): ModifierDef[] {
+    const seed = this.dailySeed();
+    if (this.dailyCache?.seed === seed) return this.dailyCache.defs;
+    let defs: ModifierDef[] = [];
+    try {
+      const w = new World(JSON.parse(JSON.stringify(this.save)));
+      w.startHub();
+      w.startRun(seed, [w.players[0].hero.id], 'daily');
+      defs = w.dailyRules.map((id) => R.mods.get(id)!).filter(Boolean);
+    } catch { /* aperçu indisponible */ }
+    this.dailyCache = { seed, defs };
+    return defs;
+  }
+  /** Mode choisi au hall (sauvegardé). */
+  setMode(m: RunMode): void {
+    const w = this.world;
+    w.hubMode = m;
+    (this.save.flags ??= {}).mode = m;
+    storeSave(this.save);
+    for (const it of w.items) if (it.kind === 'portal' && w.mode === 'hub') it.sub = 'Mode : ' + MODE_NAMES[m];
+    this.ui.banner('MODE ' + MODE_NAMES[m].toUpperCase(), m === 'daily' ? 'Seed du jour : ' + this.dailySeed() : m === 'endless' ? 'Jusqu\'où descendras-tu ?' : 'Trois mondes, une Reliure.', '#ffd23a');
+    this.audio.sfx('select');
   }
   /** Ajoute/retire le joueur 2 dans le hall. */
   toggleCoop(): void {
@@ -124,6 +159,9 @@ export class Game {
         p.input = next;
       });
       if (this.bot && w.choice) w.pick(0);
+      if (this.bot && w.dialog) w.dialogChoose(-1);
+      // un écran recouvre le jeu (panneau, dialogue, cinématique) : les appuis ne doivent pas s'y accumuler
+      if (this.ui.blocking) for (const p of w.players) { p.input.swap = p.input.interact = p.input.skill = p.input.firePressed = false; p.input.fire = false; }
       // coop : dans le hall, le héros de J2 suit ses changements
       if (w.mode === 'hub' && w.players[1]) this.coopHero = w.players[1].hero.id;
       this.acc += dt;
@@ -140,6 +178,7 @@ export class Game {
         const r = w.request;
         w.request = null;
         if (r.type === 'start') this.startRun();
+        else if (r.type === 'scene') this.ui.playScene(Number(r.data));
         else this.ui.openPanel(r.type);
       }
       if (w.mode === 'dead' || w.mode === 'won') this.setState('end');

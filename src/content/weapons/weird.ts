@@ -10,7 +10,7 @@
 // weird_banana      | 2      | 35.0 (boomerang perçant)              | 7.5
 // weird_horn        | 2      | 37.5 (onde de choc, efface les balles) | 7.5
 // weird_magnet      | 3      | 57.1 (attire les voisins)             | 11.4
-// weird_gnome       | 3      | 54.5 (+ 4 éclats de céramique)        | 10.9
+// weird_gnome       | 3      | 49.1 + éclats 25 % = 58.2             | 10.9
 // weird_accordion   | 4      | 80.0 (3 « notes » en alternance)      | 18.0
 import { defineWeapon } from '../../core/registry';
 import type { BulletSpec } from '../../core/types';
@@ -119,7 +119,7 @@ defineWeapon({
 spr('w_weird_gnome', ['...ffffff..', 'nnfFFFFFFf.', 'NNfr.....rf', 'NNfFFFFFFf.', '...ffffff..'], { ox: 2, oy: 2 });
 defineWeapon({
   id: 'weird_gnome', name: 'Lance-Nains de jardin', desc: 'Ils volent, ils explosent, ils gardent le sourire.', rarity: 3, type: 'weird',
-  sprite: 'w_weird_gnome', energy: 6, cooldown: 0.55, damage: 30, recoil: 4, kick: 20, shake: 2, sfx: 'thud', casing: false,
+  sprite: 'w_weird_gnome', energy: 6, cooldown: 0.55, damage: 27, recoil: 4, kick: 20, shake: 2, sfx: 'thud', casing: false,
   bullet: { kind: 'lob', sprite: 'b_gnome', explode: { radius: 24 }, spin: 8, split: { count: 4, spec: { damage: 5, speed: 160, life: 0.3, sprite: 'b_small', color: 0xe0404a } } },
   onFire: (ctx, ev) => aimLob(ctx, ev, 120),
   unlock: 25,

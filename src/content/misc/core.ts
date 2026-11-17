@@ -1,41 +1,59 @@
 // Sprites et entités « système » dont le moteur a besoin : butin, coffres, décor, PNJ, balles de base.
 import { defineSprite, defineEnemy, defineTheme } from '../../core/registry';
 
-// ------------------------------------------------------------------ butin
-defineSprite('pk_coin', ['.yyy.', 'y1yyY', 'yyyyY', 'yyyYY', '.YYY.'], { frames: [['..y..', '.y1Y.', '.yyY.', '.yYY.', '..Y..']] });
-defineSprite('pk_energy', ['.ccc.', 'c1ccb', 'cccbb', 'ccbbB', '.bbB.'], { frames: [['.bcb.', 'bc1cb', 'ccccc', 'bcccb', '.bcb.']] });
-defineSprite('pk_hp', ['.rr.rr.', 'r1rrrrR', 'rrrrrrR', '.rrrrR.', '..rrR..', '...R...']);
-defineSprite('pk_gem', ['..p..', '.p1p.', 'p1ppP', '.ppP.', '..P..'], { frames: [['..p..', '.ppp.', 'pp1pP', '.p1P.', '..P..']] });
-defineSprite('potion_hp', ['..22..', '..nn..', '.2222.', '2r1rr2', '2rrrr2', '2rrRR2', '.2222.']);
-defineSprite('potion_en', ['..22..', '..nn..', '.2222.', '2b1bb2', '2bbbb2', '2bbBB2', '.2222.']);
+// ------------------------------------------------------------------ butin (frames : pièce qui tourne, cœur qui bat…)
+defineSprite('pk_coin', ['.yyy.', 'y1yyY', 'yyYyY', 'yyyYY', '.YYY.'], {
+  frames: [['..y..', '.y1Y.', '.yYY.', '.yyY.', '..Y..'], ['..y..', '..1..', '..y..', '..Y..', '..Y..'], ['..y..', '.y1Y.', '.yYY.', '.yyY.', '..Y..']],
+});
+defineSprite('pk_energy', ['..c..', '.c1c.', 'cc1cb', '.cbb.', '..b..'], { frames: [['..c..', '.cic.', 'c1ccb', '.cbB.', '..b..'], ['..i..', '.c1c.', 'c11cb', '.cbb.', '..B..']] });
+defineSprite('pk_hp', ['.rr.rr.', 'r1rrrrR', 'r1rrrrR', '.rrrrR.', '..rrR..', '...R...'], {
+  frames: [['.......', '.rr.rr.', 'r1rrrrR', '.rrrrR.', '..rrR..', '...R...']],
+});
+defineSprite('pk_gem', ['..p..', '.p1p.', 'p1ppP', '.ppP.', '..P..'], { frames: [['..p..', '.ppp.', 'pp1pP', '.p1P.', '..P..'], ['..1..', '.p1p.', 'ppppP', '.pPP.', '..P..']] });
+defineSprite('potion_hp', ['..NN..', '..22..', '.2112.', '2r1rr2', '2rrrr2', '2rRRR2', '.2222.']);
+defineSprite('potion_en', ['..NN..', '..22..', '.2112.', '2b1bb2', '2bbbb2', '2bBBB2', '.2222.']);
 
 // ------------------------------------------------------------------ coffres & décor
-defineSprite('chest', ['.NNNNNNNNNN.', 'NnnnnnnnnnnN', 'NnnnnnnnnnnN', 'NyyyyyyyyyyN', 'dNNNNyyNNNNd', 'dnnnnyYnnnnd', 'dnnnnnnnnnnd', 'dnnnnnnnnnnd', '.dddddddddd.']);
-defineSprite('chest_open', ['.dddddddddd.', 'd5555555555d', 'd55yy55y555d', 'dNNNNNNNNNNd', 'dnnnnnnnnnnd', 'dnnnnnnnnnnd', 'dnnnnnnnnnnd', '.dddddddddd.']);
-defineSprite('chest_big', ['.PPPPPPPPPPPP.', 'PppppppppppppP', 'PppppppppppppP', 'PyyyyyyyyyyyyP', 'PPPPPPyyPPPPPP', 'PpppppyYpppppP', 'PppppppppppppP', 'PppppppppppppP', 'PppppppppppppP', '.PPPPPPPPPPPP.']);
-defineSprite('chest_big_open', ['.PPPPPPPPPPPP.', 'P555555555555P', 'P5y5yy55y5y55P', 'PyyyyyyyyyyyyP', 'PppppppppppppP', 'PppppppppppppP', 'PppppppppppppP', 'PppppppppppppP', '.PPPPPPPPPPPP.']);
-defineSprite('crate', ['NNNNNNNNNNNN', 'NnnnnnnnnnnN', 'NnNnnnnnnNnN', 'NnnNnnnnNnnN', 'NnnnNnnNnnnN', 'NnnnnNNnnnnN', 'NnnnnNNnnnnN', 'NnnnNnnNnnnN', 'NnnNnnnnNnnN', 'NnNnnnnnnNnN', 'NnnnnnnnnnnN', 'NNNNNNNNNNNN']);
-defineSprite('barrel', ['..RRRRRR..', '.RrrrrrrR.', 'RrrrrrrrrR', '4444444444', 'RrryyyyrrR', 'RrryrryrrR', 'RrryyyyrrR', 'RrrrrrrrrR', '4444444444', 'RrrrrrrrrR', '.RrrrrrrR.', '..RRRRRR..']);
+// coffre : bois cerclé de fer, serrure dorée
+defineSprite('chest', ['.4NNNNNNNN4.', '43nnwnnnnn34', '4NnnnnnnnnN4', '4NNNNNNNNNN4', '4433yyyy3344', 'dNnnyy0ynnNd', 'dNnnnyYnnnNd', 'dNnnnnnnnnNd', 'd4NNNNNNNN4d', '.dddddddddd.']);
+defineSprite('chest_open', ['.4NNNNNNNN4.', '4NnnnnnnnnN4', '4dddddddddd4', '4d55555555d4', '443333333344', 'dNnnnnnnnnNd', 'dNnnnyYnnnNd', 'dNnnnnnnnnNd', 'd4NNNNNNNN4d', '.dddddddddd.']);
+// grand coffre : violet, liseré d'or, gemme
+defineSprite('chest_big', [
+  '.YyyyyyyyyyyY.', 'YPpp1pppppppPY', 'YPppppppppppPY', 'YPPPPPPPPPPPPY', 'yYYYYYccYYYYYy', 'PpppppcCpppppP', 'PpppppyYpppppP', 'PppppppppppppP', 'PppppppppppppP', 'YPPPPPPPPPPPPY', '.YYYYYYYYYYYY.',
+]);
+defineSprite('chest_big_open', [
+  '.YyyyyyyyyyyY.', 'YPppppppppppPY', 'YP0000000000PY', 'YP0555555550PY', 'yYYYYYYYYYYYYy', 'PppppppppppppP', 'PppppppppppppP', 'PppppppppppppP', 'PppppppppppppP', 'YPPPPPPPPPPPPY', '.YYYYYYYYYYYY.',
+]);
+// caisse : planches, entretoise en diagonale, clous
+defineSprite('crate', ['4NNNNNNNNNN4', 'N2wnnnnnnn2N', 'NnNnnnnnnndN', 'NnnNnnnnnndN', 'NdddNddddddN', 'NnnnnNnnnndN', 'NnnnnnNnnndN', 'NddddddNdddN', 'NnnnnnnnNndN', 'NnnnnnnnnNdN', 'N2nnnnnnnn2N', '4NNNNNNNNNN4']);
+// baril explosif : cerclages, symbole de flamme
+defineSprite('barrel', ['..RRRRRR..', '.RrrwrrrR.', 'RrrrrrrrRR', '3444444443', 'RrrryyrrRR', 'Rrryy0yrRR', 'RrryyyyrRR', 'RrrryyrrRR', '3444444443', 'RrrrrrrrRR', '.RRrrrrRR.', '..RRRRRR..']);
 const PORTAL = [
   '....pppppp....', '..ppPPPPPPpp..', '.pPPbbbbbbPPp.', '.pPbbccccbbPp.', 'pPPbcc11ccbPPp', 'pPbbc1cc1cbbPp', 'pPbcc1cccccbPp', 'pPbccccc1ccbPp',
   'pPbcc1cccccbPp', 'pPbccccc1ccbPp', 'pPbbcc1cccbbPp', 'pPPbcc11ccbPPp', '.pPbbccccbbPp.', '.pPPbbbbbbPPp.', '..ppPPPPPPpp..', '....pppppp....',
 ];
-defineSprite('portal', PORTAL, { frames: [PORTAL.map((r) => r.split('').reverse().join('')), [...PORTAL].reverse()] });
-defineSprite('statue', [
-  '....3333....', '...322223...', '...32cc23...', '...322223...', '....3333....', '..33322333..', '.3322222233.', '.3232222323.', '.3232222323.',
-  '.33.3223.33.', '....3223....', '....3223....', '...332233...', '..44444444..', '.4433333344.', '.4333333334.', '.4444444444.',
-]);
+const flipH = (rows: string[]) => rows.map((r) => r.split('').reverse().join(''));
+defineSprite('portal', PORTAL, { frames: [flipH(PORTAL), [...PORTAL].reverse(), flipH([...PORTAL].reverse())] });
+// statue des Anciens : pierre ombrée, yeux qui luisent, socle doré (frame 2 : les yeux s'allument)
+const STATUE = [
+  '....3333....', '...322223...', '...2c22c3...', '...322234...', '....3334....', '..33322333..', '.3222222334.', '.3232222434.', '.3232222434.',
+  '.33.3224.34.', '....3224....', '....3224....', '...332244...', '..yYYYYYYY..', '.4433333344.', '.4333333334.', '.4444444444.',
+];
+defineSprite('statue', STATUE, { frames: [STATUE.map((r, i) => (i === 2 ? '...2i22i3...' : r))] });
 
 // ------------------------------------------------------------------ PNJ (même gabarit, capuches de couleurs différentes)
+// 4 frames : repos, mains visibles, repos, clignement
 const NPC = [
-  '....HHHH....', '...HHHHHH...', '..HHssssHH..', '..Hs0ss0sH..', '..HssssssH..', '...HssssH...', '..hHHHHHHh..', '.hHHHHHHHHh.',
-  '.hHHHyyHHHh.', '.hHHHHHHHHh.', '.hHHHHHHHHh.', '..hHHHHHHh..', '..hh....hh..', '..00....00..',
+  '....HHHH....', '...HLHHHH...', '..HLssssHH..', '..Hs0ss0sH..', '..HssSSssH..', '...HssssH...', '..hHHyHHHh..', '.hHLHHHHHHh.',
+  '.hHLHyyHHHh.', '.hHHHHHHHhh.', '.hHHHHHHhhh.', '..hHHHHHhh..', '..hh....hh..', '..00....00..',
 ];
-defineSprite('npc_merchant', NPC, { pal: { H: '#58d858', h: '#2c8a44' } });
-defineSprite('npc_smith', NPC, { pal: { H: '#f08030', h: '#b04a18' } });
-defineSprite('npc_keeper', NPC, { pal: { H: '#48a8ff', h: '#2858c8' } });
-defineSprite('npc_scribe', NPC, { pal: { H: '#c070ff', h: '#7038b8' } });
-
+const NPC_HANDS = NPC.map((r, i) => (i === 8 ? '.hsLHyyHHsh.' : r));
+const NPC_BLINK = NPC.map((r, i) => (i === 3 ? '..HsSssSsH..' : r));
+const npc = (id: string, H: string, h: string, L: string) => defineSprite(id, NPC, { frames: [NPC_HANDS, NPC, NPC_BLINK], pal: { H, h, L } });
+npc('npc_merchant', '#58d858', '#2c8a44', '#a8f070');
+npc('npc_smith', '#f08030', '#b04a18', '#ffc070');
+npc('npc_keeper', '#48a8ff', '#2858c8', '#9ae8ff');
+npc('npc_scribe', '#c070ff', '#7038b8', '#e8b8ff');
 // ------------------------------------------------------------------ balles de base (les armes peuvent en définir d'autres)
 defineSprite('b_round', ['.yy.', 'y11y', 'y11y', '.yy.']);
 defineSprite('b_small', ['.y.', 'y1y', '.y.']);
@@ -51,7 +69,9 @@ defineSprite('eb_shard', ['.eeeee.', 'e11111e', '.eeeee.'], { outline: '#5a0a1e'
 defineSprite('eb_small', ['.ee.', 'e11e', 'e11e', '.ee.'], { outline: '#5a0a1e' });
 
 // ------------------------------------------------------------------ entités spéciales
-defineSprite('mimic', ['.NNNNNNNNNN.', 'NnnnnnnnnnnN', 'Nnr0nnnnr0nN', 'NyyyyyyyyyyN', 'dw0w0w0w0w0d', 'd0RRRRRRRR0d', 'd0w0w0w0w0wd', 'dnnnnnnnnnnd', '.dddddddddd.']);
+defineSprite('mimic', ['.NNNNNNNNNN.', 'NnnnnnnnnnnN', 'Nnr0nnnnr0nN', 'NyyyyyyyyyyN', 'dw0w0w0w0w0d', 'd0RRRRRRRR0d', 'd0w0w0w0w0wd', 'dnnnnnnnnnnd', '.dddddddddd.'], {
+  frames: [['.NNNNNNNNNN.', 'NnnnnnnnnnnN', 'Nnr0nnnnr0nN', 'NyyyyyyyyyyN', 'd0000000000d', 'dw0w0w0w0w0d', 'd0RRRRRRRR0d', 'dnnnnnnnnnnd', '.dddddddddd.']],
+});
 defineEnemy({
   id: 'mimic', name: 'Mimic', world: 0, sprite: 'mimic', hp: 70, speed: 70, radius: 7, contact: 2, coins: [6, 12], energy: 3, noChampion: true,
   move: { kind: 'hop', period: 0.5, mult: 2.6 },
@@ -68,22 +88,22 @@ defineEnemy({
 // ------------------------------------------------------------------ thèmes des trois mondes
 defineTheme({
   world: 1, name: 'Sylve Murmurante',
-  floor: ['#2f5a3a', '#346241', '#2a5235'], floorDeco: '#4f8a52',
+  floor: ['#2f5a3a', '#37643f', '#294f33'], floorDeco: '#5a9a58',
   wallTop: '#6a5238', wallTopLight: '#8a6e4a', wallFace: '#463424', wallFaceDark: '#2c2018',
-  voidColor: '#0c140f', hazard: ['#3a2a4a', '#9a5ac8'], slick: ['#3a6a8a', '#6aa0c8'], door: '#c8901c',
+  voidColor: '#0c140f', hazard: ['#3e2a3e', '#c06aa8'], slick: ['#2f5f80', '#78b0d8'], door: '#c8901c',
   ambient: 0xffffff, music: { bpm: 104, root: 45, scale: [0, 2, 3, 5, 7, 8, 10] }, hazardRate: 0.3, slickRate: 0,
 });
 defineTheme({
   world: 2, name: 'Glacier Fendu',
-  floor: ['#5a7a9a', '#62829f', '#527290'], floorDeco: '#8ab0d0',
-  wallTop: '#b8d8f0', wallTopLight: '#e8f8ff', wallFace: '#6a90b8', wallFaceDark: '#4a6a90',
+  floor: ['#7290ae', '#7c9ab8', '#6886a4'], floorDeco: '#b4d0e8',
+  wallTop: '#c8e0f4', wallTopLight: '#eef9ff', wallFace: '#6a90b8', wallFaceDark: '#4a6a90',
   voidColor: '#0a1020', hazard: ['#28405a', '#4a80b0'], slick: ['#9ad0f0', '#d8f0ff'], door: '#48a8ff',
   ambient: 0xffffff, music: { bpm: 116, root: 50, scale: [0, 2, 4, 7, 9] }, hazardRate: 0.2, slickRate: 0.5,
 });
 defineTheme({
   world: 3, name: 'Forge Abyssale',
-  floor: ['#3a2a2e', '#423034', '#33252a'], floorDeco: '#5a3a3a',
-  wallTop: '#6a4048', wallTopLight: '#9a5a58', wallFace: '#3a242c', wallFaceDark: '#20141a',
-  voidColor: '#140608', hazard: ['#d83a20', '#ffb030'], slick: ['#4a3a4a', '#6a5a6a'], door: '#e0404a',
+  floor: ['#3a2a2e', '#44302f', '#32242a'], floorDeco: '#5e3c38',
+  wallTop: '#6a4048', wallTopLight: '#a86058', wallFace: '#3a242c', wallFaceDark: '#20141a',
+  voidColor: '#140608', hazard: ['#c8341c', '#ffb030'], slick: ['#4a3a4a', '#6a5a6a'], door: '#e0404a',
   ambient: 0xffffff, music: { bpm: 132, root: 43, scale: [0, 1, 3, 5, 7, 8, 10] }, hazardRate: 0.55, slickRate: 0.1,
 });

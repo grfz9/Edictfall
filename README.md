@@ -56,13 +56,16 @@ Puis ouvre l'adresse affichée (sur téléphone : l'adresse réseau, même Wi-Fi
 
 | | |
 |---|---|
-| Héros | **6**, chacun avec stats, trait passif et compétence active (double tir, bouclier, tourelle, dash invincible, ralenti du temps, soin de zone) |
-| Armes | **68**, 5 raretés (blanc → orange) : pistolets, fusils, pompes, lasers, arcs à charge, lance-roquettes, épées, lances, bâtons magiques, et 12 armes absurdes (hareng, panneau stop, lanceur de bulles, grille-pain, accordéon…) |
+| Héros | **10** (dont Croâsimir, grenouille cadre sup' en cravate), chacun avec stats, trait passif et compétence active (double tir, bouclier, tourelle, dash invincible, ralenti du temps, soin de zone) |
+| Armes | **93**, 5 raretés : plus une arme est forte, plus elle est rare. Dont 25 armes inspirées des animés (gant du coup banal, kunaï de téléportation, dégaine du rōnin…) : pistolets, fusils, pompes, lasers, arcs à charge, lance-roquettes, épées, lances, bâtons magiques, et 12 armes absurdes (hareng, panneau stop, lanceur de bulles, grille-pain, accordéon…) |
 | Édits | **56** règles en 7 catégories (armes, héros, ennemis, salles, visuel, économie, méta) + **14 synergies cachées** |
-| Ennemis | **66** (plus de 20 par monde) et **3 boss** multi-phases avec patterns de balles, + un Gardien champion à mi-monde |
+| Ennemis | **75+** dont 6 élites rares, **3 boss** qui changent d'apparence à chaque phase + un **boss secret**, et un Gardien à mi-monde |
 | Mondes | Sylve Murmurante (forêt), Glacier Fendu (sol glissant), Forge Abyssale (lave) — 3 × 5 étages, puis mode boucle |
 | Salles | combat, coffre, boutique, statue de bénédiction, salle secrète (mur fissuré à casser), gardien, boss |
-| Progression | 22 passifs, 5 familiers, gemmes pour débloquer héros, plans d'armes (Arsenal) et familiers ; Codex des édits et synergies découverts ; sauvegarde locale |
+| Modes | **Histoire** (lore + cinématique d'intro qu'on peut passer), **Infini** (score, boss en rotation), **Défi quotidien** ; difficulté qui monte en continu |
+| Hub | Hall vivant : PNJ, mannequins d'entraînement, choix du héros et du mode ; **Wassim Hadmi** propose des marchés démesurés en début de partie |
+| Salles spéciales | 7 salles à easter eggs (développeur, casino, statues qui bougent, salle du Sceau…) |
+| Progression | 22 passifs, 7 familiers, gemmes pour débloquer héros, plans d'armes (Arsenal) et familiers ; Codex des édits et synergies découverts ; sauvegarde locale |
 
 👉 La liste complète et détaillée (stats de chaque héros, chaque arme, chaque édit, chaque synergie) est dans **[docs/CONTENU.md](docs/CONTENU.md)**.
 

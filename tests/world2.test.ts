@@ -97,9 +97,21 @@ describe('Monde 2 — Glacier Fendu', () => {
         }
       }
     }
-    const boss = R.sprites.get(w2Boss()[0].sprite)!;
-    expect(boss.px[0].length).toBeGreaterThanOrEqual(26);
-    expect(boss.px.length).toBeGreaterThanOrEqual(26);
+    const def = w2Boss()[0];
+    const looks = [def.sprite, ...def.boss!.phases.map((p) => p.sprite).filter(Boolean)] as string[];
+    expect(new Set(looks).size).toBe(3);
+    for (const id of looks) {
+      const boss = R.sprites.get(id)!;
+      expect(boss, id).toBeTruthy();
+      expect(boss.px[0].length, id).toBeGreaterThanOrEqual(32);
+      expect(boss.px.length, id).toBeGreaterThanOrEqual(32);
+      expect(1 + (boss.frames?.length ?? 0), id).toBeGreaterThanOrEqual(4);
+      for (const f of [boss.px, ...(boss.frames ?? [])]) for (const row of f) {
+        expect(row.length, id).toBe(boss.px[0].length);
+        for (const ch of row) if (ch !== '.') expect(ch in PAL || !!boss.pal?.[ch], `${id}: "${ch}"`).toBe(true);
+      }
+    }
+    expect(def.hp).toBeGreaterThanOrEqual(1350);
   });
 
   it('patterns et invocations référencés existent', () => {

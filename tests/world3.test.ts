@@ -95,7 +95,7 @@ describe('Monde 3 — Forge Abyssale', () => {
     const boss = [...R.enemies.values()].find((d) => d.world === 3 && d.boss)!;
     const phases = boss.boss!.phases;
     expect(phases.length).toBeGreaterThanOrEqual(3);
-    expect(boss.hp).toBeGreaterThanOrEqual(1300);
+    expect(boss.hp).toBeGreaterThanOrEqual(2000);
     const w = arena('W3-BOSS');
     const e = spawnNear(w, boss.id);
     let maxB = 0;
@@ -117,5 +117,63 @@ describe('Monde 3 — Forge Abyssale', () => {
     expect(maxB).toBeLessThanOrEqual(700);
     w.ctx.killEnemy(e);
     for (let i = 0; i < 120; i++) tick(w);
+  });
+
+  // ---------------------------------------------------------------- tous les boss (lot Boss)
+  const allBosses = () => [...R.enemies.values()].filter((d) => d.boss);
+
+  it('boss : apparence par phase (sprites ≥ 32 px, 4 frames, palette), télégraphes ≥ 0.4 s, dégâts ≤ 2', () => {
+    const ids = allBosses().map((d) => d.id);
+    for (const id of ['boss_souche', 'boss_w2_horlogere', 'boss_primat_fondeur', 'boss_secret_grimoire']) expect(ids, id).toContain(id);
+    for (const d of allBosses()) {
+      const looks = [d.sprite, ...d.boss!.phases.map((p) => p.sprite).filter(Boolean)] as string[];
+      expect(new Set(looks).size, d.id).toBe(d.boss!.phases.length);
+      for (const id of looks) {
+        const s = R.sprites.get(id)!;
+        expect(s, id).toBeTruthy();
+        const pal = { ...PAL, ...(s.pal ?? {}) };
+        expect(s.px[0].length, id).toBeGreaterThanOrEqual(32);
+        expect(1 + (s.frames?.length ?? 0), id).toBeGreaterThanOrEqual(4);
+        for (const f of [s.px, ...(s.frames ?? [])]) {
+          expect(f.length, id).toBe(s.px.length);
+          for (const row of f) {
+            expect(row.length, id).toBe(s.px[0].length);
+            for (const c of row) if (c !== '.') expect(pal[c], `${id} « ${c} »`).toBeTruthy();
+          }
+        }
+      }
+      for (const ph of d.boss!.phases) {
+        if (ph !== d.boss!.phases[0]) expect(ph.onEnter, `${d.id} transition`).toBeTruthy();
+        for (const a of ph.attacks) {
+          expect(R.patterns.has(a.pattern), `${d.id} → ${a.pattern}`).toBe(true);
+          expect(a.telegraph ?? 0.35, `${d.id} ${a.pattern}`).toBeGreaterThanOrEqual(0.4);
+          expect(a.params?.damage ?? 1, d.id).toBeLessThanOrEqual(2);
+          if (a.pattern === 'summon') expect(R.enemies.has(a.params?.id), `${d.id} invoque ${a.params?.id}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('boss secret : world 0 (hors pool), 3 phases simulées 12 s chacune', () => {
+    const def = R.enemies.get('boss_secret_grimoire')!;
+    expect(def.world).toBe(0);
+    expect(def.boss!.phases.length).toBe(3);
+    const w = arena('SECRET-BOSS');
+    const e = spawnNear(w, def.id);
+    let maxB = 0;
+    def.boss!.phases.forEach((ph, k) => {
+      const hp = k === 0 ? e.maxHp : e.maxHp * ph.hp - 1;
+      let fired = false;
+      for (let i = 0; i < 60 * 12; i++) {
+        e.hp = hp;
+        tick(w, () => { maxB = Math.max(maxB, w.bullets.length); if (!fired) fired = w.bullets.some((b) => b.owner === e); });
+      }
+      expect(e.phase, `phase ${k}`).toBe(k);
+      expect(fired, `phase ${k} sans tir`).toBe(true);
+    });
+    expect(maxB).toBeLessThanOrEqual(700);
+    w.ctx.killEnemy(e);
+    for (let i = 0; i < 120; i++) tick(w);
+    expect(w.rules.errors).toEqual([]);
   });
 });

@@ -1,16 +1,38 @@
 // Tamsin l'Horlogère : ralentit le temps des ennemis et de leurs balles.
-import { defineHero, defineSprite } from '../../core/registry';
+import { defineHero } from '../../core/registry';
+import { heroArt, legs } from './_kit';
 
 const SLOW = 0.35;
 
-defineSprite('hero_tamsin', [
-  '...PPPPPP...', '...PyyyyP...', '...PPPPPP...', '.PPPPPPPPPP.', '...ssssss...', '...s0ss0s...', '...ssssss...',
-  '..ppwyywpp..', '.pppwwwwppp.', 'pppppyyppppp', '.pppppppppp.', '..pppppppp..', '..PP....PP..', '..00....00..',
-], {
-  frames: [[
-    '...PPPPPP...', '...PyyyyP...', '...PPPPPP...', '.PPPPPPPPPP.', '...ssssss...', '...s0ss0s...', '...ssssss...',
-    '..ppwyywpp..', '.pppwwwwppp.', 'pppppyyppppp', '.pppppppppp.', '..pppppppp..', '...PP..PP...', '...00..00...',
-  ]],
+// Horlogère : haut-de-forme à cadran, monocle doré, redingote violette à basques, chaîne de montre.
+heroArt('tamsin', {
+  pal: { j: '#4a2a6a' },
+  base: [
+    '..............',
+    '....PPPPPP....',
+    '....PpppPP....',
+    '....Py1yPP....',
+    '....PyRyPP....',
+    '..PPPPPPPPPP..',
+    '....ssssss....',
+    '....s0sy1s....',
+    '....sssSYs....',
+    '...ppwyywpp...',
+    '..pPpwwwwpPp..',
+    '.spPppyppYpPs.',
+    '..pPppppYpPp..',
+    '..pP.jj.jjPp..',
+    '....jj..jj....',
+    '...00...00....',
+  ],
+  waist: 12,
+  walk: legs('j', '0', 4, [
+    { 12: '..pPppppYpPp..', 13: '.pP.jj...jjPp.' },
+    { 12: '..pPppppYpPp..', 13: '..pP.jjjj.Pp..' },
+    { 12: '..pPpppYppPp..', 13: '..pPjj...jjp..' },
+  ]),
+  bob: [false, true, false],
+  blink: { 7: '....sSsy1s....' },
 });
 
 defineHero({

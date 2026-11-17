@@ -6,20 +6,22 @@
 // laser_ricochet   | 3      | 56.3 (3 rebonds)             | 12.5
 // laser_sunspear   | 4      | 80 nominal (60 → 100 chauffé) | 20.0
 import { defineWeapon } from '../../core/registry';
-import { spr } from './_helpers';
+import { spr, muzzleFx } from './_helpers';
 
-spr('w_laser_pointer', ['.33333333', '3222222mr', '.33333333', '..4......'], { ox: 2, oy: 2 });
+spr('w_laser_pointer', ['.333333333.', '3222222222r', '.343333333.', '..4........'], { ox: 2, oy: 2 });
 defineWeapon({
   id: 'laser_pointer', name: 'Pointeur de conférence', desc: 'Diapositive suivante : votre défaite.', rarity: 0, type: 'laser',
   sprite: 'w_laser_pointer', energy: 0, cooldown: 0.15, damage: 3, recoil: 0.5, shake: 0, sfx: 'zap',
   bullet: { kind: 'beam', damage: 3, width: 1.5, length: 150, color: 0xff3050 },
+  onFire: (ctx, ev) => { if (ctx.rng.chance(0.3)) muzzleFx(ctx, ev, 0xff3050, 1, 0, 11); },
 });
 
-spr('w_laser_cutter', ['..yyyyy....', '4yY4444aaa1', '4YY444aaaa.', '.4.4.......', '...4.......'], { ox: 2, oy: 2 });
+spr('w_laser_cutter', ['..yyyyy.....', '4yY1y44aaa21', '4YYYY4aaaa2.', '.4.4........', '...4........'], { ox: 2, oy: 2 });
 defineWeapon({
   id: 'laser_cutter', name: 'Découpe-tôle', desc: 'Garantie deux ans, sauf usage sur des gens.', rarity: 1, type: 'laser',
   sprite: 'w_laser_cutter', energy: 1, cooldown: 0.2, damage: 6, recoil: 1, shake: 0.3,
   bullet: { kind: 'beam', damage: 6, width: 2.5, length: 180, color: 0xffd23a },
+  onFire: (ctx, ev) => muzzleFx(ctx, ev, 0xffe060, 2, 0, 12),
 });
 
 spr('w_laser_pulse', ['..BBBBBBB..', '.BbbbbbbBcc', 'B5ccc5bBc11', '.B5BBBBBBcc', '..5........'], { ox: 2, oy: 3 });
@@ -27,6 +29,7 @@ defineWeapon({
   id: 'laser_pulse', name: 'Impulseur', desc: 'Trois éclairs bleus, zéro remords.', rarity: 2, type: 'laser',
   sprite: 'w_laser_pulse', energy: 4, cooldown: 0.5, damage: 7, burst: { count: 3, interval: 0.06 }, recoil: 2, shake: 1, sfx: 'laser',
   bullet: { kind: 'beam', damage: 7, width: 4, length: 220, color: 0x48a8ff },
+  onFire: (ctx, ev) => muzzleFx(ctx, ev, 0x9ae8ff, 4, 5, 12),
 });
 
 spr('w_laser_ricochet', ['...tttttt..', '.ttTTTTTTc1', 'tT5tttttTc.', 'tT5........', '.T5........'], { ox: 2, oy: 3 });

@@ -1,16 +1,33 @@
 // Bouldre le Moine-Racine : onde de sève qui soigne les alliés et repousse les ennemis.
-import { defineHero, defineSprite } from '../../core/registry';
+import { defineHero } from '../../core/registry';
+import { heroArt, legs } from './_kit';
 
 const R_HEAL = 72;
 
-defineSprite('hero_bouldre', [
-  '...llllll...', '..lfllllfl..', '.nnnnnnnnnn.', '.nssssssssn.', '.ns0ssss0sn.', '.nswwwwwwsn.', 'fnnwwwwwwnnf',
-  'ffnnwwwwnnff', 'fFnnnnnnnnFf', 'fFnnnggnnnFf', '.Fnnnnnnnnf.', '..nnnnnnnn..', '..dd....dd..', '.ddd....ddd.',
-], {
-  frames: [[
-    '...llllll...', '..lfllllfl..', '.nnnnnnnnnn.', '.nssssssssn.', '.ns0ssss0sn.', '.nswwwwwwsn.', 'fnnwwwwwwnnf',
-    'ffnnwwwwnnff', 'fFnnnnnnnnFf', 'fFnnnggnnnFf', '.Fnnnnnnnnf.', '..nnnnnnnn..', '...dd..dd...', '..ddd..ddd..',
-  ]],
+// Moine-Racine : couronne de feuilles et sa baie, visage d'écorce, barbe de mousse, bure de lierre, pieds-racines.
+heroArt('bouldre', {
+  base: [
+    '..............',
+    '....lllfl.....',
+    '..llfllllfl...',
+    '.lflFlrllFfl..',
+    '..FnnnnnnnF...',
+    '..nNy0nny0N...',
+    '..nnnnNnnnn...',
+    '.fnllllllln...',
+    'fFnlwlllwlnf..',
+    'fFnnllfllnnFf.',
+    '.FNnnflfnnNF..',
+    '.lNnnnggnnNl..',
+    '..NnnnnnnnN...',
+    '...ddd.ddd....',
+    '...dd...dd....',
+    '..dddd.dddd...',
+  ],
+  waist: 12,
+  walk: legs('d', 'd', 4, [{ 15: '.ddd......dddd' }, { 1: '.....lllfl....' }, { 15: '.dddd....ddd..' }]),
+  bob: [false, true, false],
+  blink: { 5: '..nNnnnnnnN...' },
 });
 
 defineHero({

@@ -1,11 +1,12 @@
 // Écrans plein cadre : titre, pause, options, comment jouer, fin de run, panneaux du hall, confirmation.
 // Un seul jeu d'écouteurs délégués sur #overlay (aucune fuite quand on rouvre un menu).
 import type { Game } from '../main';
-import type { ModifierDef } from '../core/types';
+import type { ModifierDef, RunMode } from '../core/types';
 import { R, allRules, allSynergies } from '../core/registry';
 import { RARITY_COLORS, RARITY_NAMES } from '../core/damage';
 import { storeSave, wipeSave } from '../core/save';
-import { WORLD_NAMES } from '../sim/world';
+import { WORLD_NAMES, MODE_NAMES } from '../sim/world';
+import type { PadAction } from './padnav';
 import { $, $$, esc, fillIcons, pix, copyText, replay, weaponStats, fmt, modKindLabel, modColor, CATEGORY, CATEGORY_ORDER, FLAVOR, WEAPON_TYPES } from './dom';
 import { drawLogo } from './logo';
 import { uiOpts } from './hud';
@@ -38,6 +39,7 @@ export class Menus {
   }
 
   get active(): boolean { return this.screen !== 'none'; }
+  get modalOpen(): boolean { return !!this.modal; }
 
   // ------------------------------------------------------------------ routage
   show(state: Game['state']): void {
@@ -85,9 +87,10 @@ export class Menus {
           <div class="row">
             <button class="btn" data-a="options">Options</button>
             <button class="btn" data-a="howto">Comment jouer</button>
+            <button class="btn" data-a="intro">L'histoire</button>
           </div>
         </div>
-        ${s.stats.runs || s.gems ? `<div class="title-stats">${pix('gem', 1)} ${s.gems} · Runs : ${s.stats.runs} · Victoires : ${s.stats.wins}${s.stats.best ? ` · Record : ${esc(s.stats.best)}` : ''}</div>` : ''}
+        ${s.stats.runs || s.gems ? `<div class="title-stats">${pix('gem', 1)} ${s.gems} · Runs : ${s.stats.runs} · Victoires : ${s.stats.wins}${s.stats.best ? ` · Record : ${esc(s.stats.best)}` : ''}${s.records?.endless ? ` · Infini : ${s.records.endless.score}` : ''}</div>` : ''}
       </div>
       <div class="credit">Edictfall · un roguelike où les règles changent · TypeScript + PixiJS</div>`);
     $('.logo', this.el).appendChild(drawLogo());
@@ -144,6 +147,8 @@ export class Menus {
           ${rng('music', 'Musique', o.music, 1)}
           ${rng('shake', 'Tremblement d\'écran', o.shake, 1.5)}
           ${tog('showFps', 'Afficher les FPS', !!o.showFps)}
+          <div class="opt"><span>Mode performance</span><span class="seg" role="radiogroup">${(['auto', 'on', 'off'] as const).map((v) =>
+            `<button class="${(o.perf ?? 'auto') === v ? 'on' : ''}" data-a="perf" data-v="${v}" role="radio" aria-checked="${(o.perf ?? 'auto') === v}">${{ auto: 'Auto', on: 'Oui', off: 'Non' }[v]}</button>`).join('')}</span></div>
           ${seg}
           <div class="opt"><span>Sauvegarde</span><button class="btn mini danger" data-a="reset">Réinitialiser…</button></div>
         </div>
@@ -218,13 +223,15 @@ export class Menus {
     };
     const rules = byOrder(s.rules), syn = byOrder(s.synergies), pas = byOrder(s.passives);
     const hero = R.heroes.get(s.hero);
-    const where = s.win ? 'Donjon vaincu' : `Tombé en ${s.world}-${s.floor} · ${esc(WORLD_NAMES[s.world] ?? '')}`;
+    const where = s.win ? 'Donjon vaincu' : s.mode === 'endless' ? `Tombé à l'étage ${s.stage} · ${esc(WORLD_NAMES[s.world] ?? '')}` : `Tombé en ${s.world}-${s.floor} · ${esc(WORLD_NAMES[s.world] ?? '')}`;
     this.mount('end', `end ${s.win ? 'win' : 'lose'}`, `
       <div class="box wide end-box">
         <div class="bh"><h2>${s.win ? 'Victoire !' : 'Tu es tombé'}</h2>
           <div class="sub">${hero ? `<span class="ic" data-icon="${hero.sprite}" data-fit="22"></span>${esc(hero.name)} · ` : ''}${where}${s.loop ? ` · Boucle ${s.loop + 1}` : ''}</div></div>
         <div class="end-cols">
           <div class="end-left">
+            <div class="score-box ${s.newRecord ? 'rec' : ''}"><small>${esc(MODE_NAMES[s.mode] ?? '')}${s.mode === 'endless' ? ` · étage ${s.stage}` : ''}</small><b>${s.score.toLocaleString('fr-FR')}</b>
+              <em>${s.newRecord ? '★ Nouveau record !' : s.best ? `Record : ${s.best.toLocaleString('fr-FR')}` : ''}</em></div>
             <div class="stats">
               <div><b>${mm}:${ss}</b><small>Temps</small></div><div><b>${s.kills}</b><small>Ennemis</small></div>
               <div><b>${s.rooms}</b><small>Salles</small></div><div><b>${s.bosses}</b><small>Boss</small></div>
@@ -241,7 +248,7 @@ export class Menus {
           </div>
         </div>
         <div class="row end-actions">
-          ${s.win ? '<button class="btn big" data-a="loop" data-autofocus>Continuer en boucle</button>' : ''}
+          ${s.win && s.mode !== 'endless' ? '<button class="btn big" data-a="loop" data-autofocus>Continuer en boucle</button>' : ''}
           <button class="btn ${s.win ? '' : 'big'}" data-a="hub" ${s.win ? '' : 'data-autofocus'}>Retour au hall</button>
           <button class="btn" data-a="retry">Rejouer la seed</button>
         </div>
@@ -296,11 +303,28 @@ export class Menus {
         `</div></div><div class="pfoot">${s.pet ? 'Touche le familier actif pour le laisser au chenil.' : 'Aucun familier actif.'}<span class="kbd-hint"> · <kbd>Échap</kbd> pour fermer</span></div>`;
     } else if (type === 'codex') {
       body = head('Codex', '') + this.codexBody();
+    } else if (type === 'modes') {
+      body = head('Tableau des défis', 'Choisis ton mode, puis entre dans le portail.') + this.modesBody();
     }
     const keepFocus = (document.activeElement as HTMLElement | null)?.dataset?.id;
     this.mount('panel', `panel panel-${type}`, `<div class="box wide panel-box" role="dialog" aria-label="${type}">${body}</div>`, () => this.closePanel());
     if (keepFocus) ($(`[data-id="${keepFocus}"]`, this.el) as HTMLElement | null)?.focus({ preventScroll: true });
-    else if (g.input.device !== 'touch') ($('.card, .filt, .x', this.el) as HTMLElement | null)?.focus({ preventScroll: true });
+    else if (g.input.device !== 'touch') (($('.panel-box [data-autofocus]', this.el) ?? $('.card, .filt, .x', this.el)) as HTMLElement | null)?.focus({ preventScroll: true });
+  }
+  private modesBody(): string {
+    const g = this.game, s = g.save, rec = s.records ?? {}, cur = g.world.hubMode;
+    const today = g.dailySeed();
+    const daily = rec.daily?.seed === today ? rec.daily : null;
+    const edicts = g.dailyPreview().map((d) => `<span class="chip" style="--fc:${modColor(d)}"><span data-icon="${d.icon}" data-fit="16"></span>${esc(d.name)}</span>`).join('');
+    const card = (m: RunMode, icon: string, title: string, desc: string, extra: string) =>
+      `<button class="card mode-card ${cur === m ? 'sel' : ''}" data-a="mode" data-v="${m}" ${cur === m ? 'data-autofocus' : ''}>
+        ${pix(icon, 3)}<b>${title}</b><small>${desc}</small><span class="mrec">${extra}</span><em>${cur === m ? '★ Choisi' : 'Choisir'}</em></button>`;
+    return `<div class="pscroll"><div class="grid modes">
+      ${card('story', 'crown', 'Histoire', 'Trois mondes, trois Seigneurs, une Reliure à réécrire. Scènes entre les mondes et vraie fin.', `Victoires : ${rec.storyWins ?? 0}`)}
+      ${card('endless', 'loop', 'Infini', 'Des étages sans fin. La difficulté grimpe sans arrêt, un Seigneur tous les 5 étages. Score et record.', rec.endless ? `Record : <b>${rec.endless.score.toLocaleString('fr-FR')}</b> · étage ${rec.endless.stage}` : 'Aucun record')}
+      ${card('daily', 'hourglass', 'Défi quotidien', `Seed du jour <b>${esc(today)}</b>, la même pour tout le monde, et 3 édits imposés.`, daily ? `Aujourd'hui : <b>${daily.score.toLocaleString('fr-FR')}</b>` : 'Pas encore joué aujourd\'hui')}
+      </div>${edicts ? `<h3>Édits imposés aujourd'hui</h3><div class="chain">${edicts}</div>` : ''}</div>
+      <div class="pfoot">Mode actuel : <b>${esc(MODE_NAMES[cur])}</b><span class="kbd-hint"> · <kbd>Échap</kbd> pour fermer</span></div>`;
   }
   private codexBody(): string {
     const s = this.game.save;
@@ -366,7 +390,7 @@ export class Menus {
         break;
       case 'hub': g.toHub(); break;
       case 'loop': w.continueLoop(); g.setState('play'); break;
-      case 'retry': { const seed = w.summary?.seed; w.startHub(); g.startRun(seed); break; }
+      case 'retry': { const seed = w.summary?.seed, mode = w.summary?.mode; w.startHub(); g.startRun(seed, mode); break; }
       case 'copy':
         copyText(b.dataset.v ?? '').then((ok) => { b.textContent = ok ? 'Copié !' : 'Échec'; replay(b, 'flash'); window.setTimeout(() => { if (b.isConnected) b.textContent = 'Copier'; }, 1400); });
         break;
@@ -377,6 +401,13 @@ export class Menus {
         g.applyOptions(); g.audio.sfx('select', 0.5);
         break;
       }
+      case 'perf':
+        (s.options as any).perf = b.dataset.v;
+        $$('[data-a="perf"]', this.el).forEach((x) => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on)); });
+        g.applyOptions();
+        break;
+      case 'intro': g.ui.playIntro(); break;
+      case 'mode': g.setMode(b.dataset.v as RunMode); this.closePanel(); break;
       case 'touch':
         s.options.touch = b.dataset.v as 'auto' | 'on' | 'off';
         $$('[data-a="touch"]', this.el).forEach((x) => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on)); });
@@ -444,6 +475,40 @@ export class Menus {
     if ((inText || inRange) && dir[0] !== 0) return false;
     this.nav(dir[0], dir[1]);
     return true;
+  }
+  /** Manette : croix/stick = navigation, A = valider, B = retour, Start = jouer / reprendre. */
+  pad(a: PadAction): void {
+    const g = this.game;
+    if (a === 'back') {
+      if (this.escape()) return;
+      if (this.screen === 'pause') g.setState('play');
+      return;
+    }
+    if (a === 'start') {
+      if (this.modal) return;
+      if (this.screen === 'title') this.act('play', this.el);
+      else if (this.screen === 'pause') g.setState('play');
+      else if (this.screen === 'panel') this.closePanel();
+      return;
+    }
+    if (a === 'ok') {
+      const root = ($('.modal', this.el) as HTMLElement | null) ?? this.el;
+      const ae = document.activeElement as HTMLElement | null;
+      if (ae && root.contains(ae) && (ae.tagName === 'BUTTON' || ae.dataset.a)) { ae.click(); return; }
+      if (this.screen === 'title') { this.act('play', this.el); return; }
+      const first = $<HTMLElement>(FOCUSABLE, root);
+      first?.focus();
+      return;
+    }
+    const ae = document.activeElement as HTMLInputElement | null;
+    if (ae?.type === 'range' && (a === 'left' || a === 'right')) {
+      const st = Number(ae.step) || 0.05;
+      ae.value = String(Math.max(Number(ae.min), Math.min(Number(ae.max), Number(ae.value) + (a === 'left' ? -st : st))));
+      this.onInput(ae);
+      return;
+    }
+    const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[a] as [number, number];
+    this.nav(d[0], d[1]);
   }
   private nav(dx: number, dy: number): void {
     const root = ($('.modal', this.el) as HTMLElement | null) ?? this.el;

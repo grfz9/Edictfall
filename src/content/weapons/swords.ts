@@ -5,20 +5,20 @@
 // sword_cleaver   | 1      | 28.6 (gros recul)             | 0
 // sword_mirror    | 2      | 40.0 (renvoie les balles)     | 2.5
 // sword_flambe    | 3      | 55.0 (+ brûlure)              | 2.5
-// sword_eclipse   | 4      | 65 + croissant 25 = 90        | 2.5
+// sword_eclipse   | 4      | 65 + croissant 38 % = 89.7    | 2.5
 import { defineWeapon } from '../../core/registry';
 import { spr } from './_helpers';
 
 spr('b_crescent', ['.pp...', '..pp..', '...p1.', '...p1.', '..pp..', '.pp...']);
 
-spr('w_sword_crate', ['..n.........', 'NNnnnnnnnnn.', 'NNnNnnnNnnnn', 'NNnnnnnnnnn.', '..n.........'], { ox: 1, oy: 2 });
+spr('w_sword_crate', ['..n..........', 'NNnnnnnnnnnn.', 'dNnSnnnSnnnnn', 'NNNNNNNNNNNN.', '..N..........'], { ox: 1, oy: 2 });
 defineWeapon({
   id: 'sword_crate', name: 'Épée en bois de cagette', desc: 'Échardes offertes avec chaque coup.', rarity: 0, type: 'sword',
   sprite: 'w_sword_crate', energy: 0, cooldown: 0.38, damage: 8, sfx: 'swing',
-  bullet: { kind: 'slash', range: 26, arc: 2.0, knockback: 90, color: 0xd8b080 },
+  bullet: { kind: 'slash', range: 26, arc: 2.0, knockback: 90, color: 0xd8b080, onHit: (ctx, _b, t) => ctx.burst(t.x, t.y, 0xb98a52, 2, 40, 0.3, 1) },
 });
 
-spr('w_sword_rapier', ['..Y............', 'NNY22222222222.', 'NNY111111111111', 'NNY22222222222.', '..Y............'], { ox: 1, oy: 2 });
+spr('w_sword_rapier', ['..YY..............', 'NNY.Y22222222222..', 'dNYY11111111111111', 'NNY.Y2222222222...', '..YY..............'], { ox: 1, oy: 2 });
 defineWeapon({
   id: 'sword_rapier', name: 'Rapière de l\'escrimeur pressé', desc: 'Touché ! Et touché. Et retouché.', rarity: 1, type: 'sword',
   sprite: 'w_sword_rapier', energy: 0, cooldown: 0.24, damage: 7, crit: 0.2, sfx: 'swing',

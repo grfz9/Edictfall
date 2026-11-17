@@ -63,6 +63,8 @@ function roomSize(type: RoomType, rng: Rng): [number, number] {
       return [13 + 2 * rng.int(0, 4), 9 + 2 * rng.int(0, 3)];
     case 'shop':
       return [13, 9];
+    case 'special':
+      return [15, 11];
     default:
       return [11, 9];
   }
@@ -221,7 +223,7 @@ export function generateFloor(rng: Rng, plan: FloorPlan, theme: ThemeDef | undef
   for (const r of f.rooms) {
     const depth = plan.floor;
     if (r.type === 'combat') {
-      r.waves = Math.min(3, 1 + (depth >= 2 ? 1 : 0) + (rng.chance(0.2 + 0.1 * plan.world) ? 1 : 0));
+      r.waves = Math.min(3, 1 + (depth >= 2 ? 1 : 0) + (rng.chance(0.15 + 0.12 * plan.world + 0.04 * depth) ? 1 : 0));
     }
     if (r.type !== 'combat' && r.type !== 'boss' && r.type !== 'guardian') continue;
     const ix0 = r.x + 3, iy0 = r.y + 3, ix1 = r.x + r.w - 4, iy1 = r.y + r.h - 4; // zone intérieure (2 tuiles de marge)
@@ -282,9 +284,9 @@ export function generateFloor(rng: Rng, plan: FloorPlan, theme: ThemeDef | undef
   return f;
 }
 
-/** Le Hall : une grande salle unique. */
+/** Le Hall des Ratures : une grande salle unique (le décor est posé par World.startHub). */
 export function generateHub(): Floor {
-  const w = 27, h = 17;
+  const w = 41, h = 27;
   const f: Floor = { w, h, tiles: new Uint8Array(w * h), rooms: [], start: null as any, world: 0, floor: 0, props: [], cracks: [], rev: 0 };
   const room: Room = {
     id: 0, type: 'hub', cx: 0, cy: 0, x: 1, y: 1, w: w - 2, h: h - 2, state: 'cleared', locked: false, doors: [], links: [],

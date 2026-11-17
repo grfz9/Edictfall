@@ -216,6 +216,8 @@ export interface EnemyDef {
   cost?: number;
   /** Étage minimum (1-5) dans son monde. */
   minFloor?: number;
+  /** Poids de tirage dans les vagues (défaut 1 ; 0,25 pour les ids `elite_*`). Tirage ∝ weight / √cost. */
+  weight?: number;
   move: MoveSpec;
   attacks?: AttackSpec[];
   /** Ignore les obstacles/murs intérieurs. */
@@ -420,6 +422,8 @@ export interface Mods {
   // --- monde
   timeScale: number; // vitesse des ennemis et de leurs balles
   wallDamage: number; // dégâts quand le joueur touche un mur (0 = non)
+  /** Le joueur ne subit pas les dégâts des tuiles dangereuses (T.HAZARD). Défaut false. */
+  hazardImmune: boolean;
   bulletMagnet: number; // attraction des balles ennemies vers le joueur (px/s²)
   explosionSize: number;
   // --- visuel
@@ -609,7 +613,7 @@ export interface ThemeDef {
 }
 
 // ------------------------------------------------------------------ Monde : salles & objets
-export type RoomType = 'start' | 'combat' | 'chest' | 'shop' | 'statue' | 'secret' | 'guardian' | 'boss' | 'hub';
+export type RoomType = 'start' | 'combat' | 'chest' | 'shop' | 'statue' | 'secret' | 'guardian' | 'boss' | 'hub' | 'special';
 export interface Room {
   id: number;
   type: RoomType;
@@ -714,4 +718,51 @@ export interface SaveData {
   stats: { runs: number; wins: number; kills: number; best: string; bosses: number };
   seenRules: string[];
   seenSynergies: string[];
+  /** Drapeaux divers (intro vue, salles spéciales découvertes…). */
+  flags?: Record<string, any>;
+  /** Records par mode de jeu. */
+  records?: SaveRecords;
+}
+
+// ------------------------------------------------------------------ Modes de jeu
+export type RunMode = 'story' | 'endless' | 'daily';
+export interface RunRecord {
+  score: number;
+  /** Étage atteint (1 = premier). */
+  stage: number;
+  hero: string;
+  kills: number;
+  time: number;
+}
+export interface SaveRecords {
+  endless?: RunRecord;
+  /** Meilleur résultat du défi quotidien, par seed du jour. */
+  daily?: { seed: string } & RunRecord;
+  /** Nombre de défis quotidiens joués / terminés. */
+  dailyPlayed?: number;
+  dailyWon?: number;
+  storyWins?: number;
+}
+/** Ligne de dialogue (boîte de dialogue avec portrait). */
+export interface DialogLine {
+  /** Nom affiché. */
+  who: string;
+  /** Sprite du portrait (id de sprite). */
+  portrait?: string;
+  text: string;
+  /** Couleur du nom. */
+  color?: string;
+}
+export interface DialogOption {
+  label: string;
+  sub?: string;
+  /** Option « refus / retour » (B / Échap la choisit). */
+  cancel?: boolean;
+  act?: () => void;
+}
+export interface Dialog {
+  lines: DialogLine[];
+  /** Choix proposés après la dernière ligne (sinon : simple fermeture). */
+  options?: DialogOption[];
+  onClose?: () => void;
 }
