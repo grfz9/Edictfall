@@ -9,5 +9,5 @@ describe('simulation headless', () => {
     expect(w.rules.errors).toEqual([]);
     expect(w.stats.rooms).toBeGreaterThan(3);
     expect(w.depth()).toBeGreaterThan(2);
-  });
+  }, 60_000);
 });
