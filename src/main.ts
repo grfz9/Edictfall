@@ -153,6 +153,9 @@ export class Game {
       w.players.forEach((p, i) => {
         const prev = p.input;
         const next = this.bot && i === 0 ? botInput(w, p) : inputs[i] ?? prev;
+        // Écran en miroir (édit « Monde miroir », salle sans gravité) : les commandes suivent ce qu'on VOIT,
+        // donc droite = droite à l'écran, au clavier, au joystick comme à la souris.
+        if (w.mods.mirror && next !== prev && !(this.bot && i === 0)) { next.mx = -next.mx; next.ax = -next.ax; }
         if (prev && next !== prev) {
           next.swap ||= prev.swap; next.interact ||= prev.interact; next.skill ||= prev.skill; next.firePressed ||= prev.firePressed;
         }
