@@ -99,6 +99,18 @@ export class UI {
     this.padnav.sync();
   }
 
+  /** Ferme le panneau du hall ouvert (ou seulement s'il est de ce type). */
+  closePanel(type?: string): void {
+    if (!this.menus.panel || (type && this.menus.panel !== type)) return;
+    this.menus.closePanel();
+    this.sync();
+  }
+  /** Le salon en ligne a changé : rafraîchit le panneau (s'il est ouvert) et le HUD. */
+  refreshOnline(): void {
+    if (this.menus.panel === 'online') { this.menus.openPanel('online'); this.sync(); }
+    this.hud.reset();
+  }
+
   /** Cinématique d'introduction (premier lancement, ou rejouée depuis le hall / le titre). */
   playIntro(done: () => void = () => {}): void {
     this.cine.play(INTRO, () => {

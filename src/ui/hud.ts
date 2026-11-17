@@ -5,6 +5,7 @@ import { RARITY_COLORS, RARITY_NAMES } from '../core/damage';
 import { WORLD_NAMES, MODE_NAMES } from '../sim/world';
 import { $, esc, fillIcons, pix, pixUrl, replay, instStats, fmt, modKindLabel, spriteFit } from './dom';
 import { Minimap } from './minimap';
+import { R } from '../core/registry';
 
 /** Options d'affichage propres à l'UI, rangées dans save.options (champ supplémentaire, ignoré par le reste du jeu). */
 export type UIOptions = { showFps?: boolean; perf?: 'auto' | 'on' | 'off' };
@@ -63,7 +64,7 @@ class PlayerCard {
     this.en = new StatBar('en', 'bolt', 20, mini);
     $('.pstats', this.el).append(this.hp.el, this.ar.el, this.en.el);
   }
-  update(g: Game, p: Player, coop: boolean): void {
+  update(g: Game, p: Player, tag: string): void {
     const w = g.world;
     if (p.hero.id !== this.heroId) {
       this.heroId = p.hero.id;
@@ -71,7 +72,7 @@ class PlayerCard {
       try { this.portrait.prepend(spriteFit(p.hero.sprite, this.index ? 26 : 38)); } catch { /* sprite manquant */ }
       this.portrait.title = p.hero.name + ' — ' + p.hero.title;
     }
-    this.tag.textContent = coop ? `J${this.index + 1}` : '';
+    if (this.tag.textContent !== tag) this.tag.textContent = tag;
     this.hp.set(Math.max(0, Math.ceil(p.hp)), w.maxHp(p));
     this.ar.set(Math.max(0, Math.ceil(p.armor)), w.maxArmor(p));
     this.en.set(Math.max(0, Math.floor(p.energy)), w.maxEnergy(p));
@@ -83,7 +84,8 @@ export class Hud {
   readonly el: HTMLElement;
   private cache = new Map<string, string>();
   private p1 = new PlayerCard(0);
-  private p2 = new PlayerCard(1);
+  /** Cartes réduites des autres joueurs (coop locale ou en ligne). */
+  private others = [new PlayerCard(1), new PlayerCard(2), new PlayerCard(3)];
   private map = new Minimap();
   private mapT = 0;
   private bossGhostT = 0;
@@ -107,18 +109,20 @@ export class Hud {
       <div class="hud-tr">
         <div class="maprow"><button id="h-pause" class="hbtn" aria-label="Pause" title="Pause (Échap)">${pix('pause', 2)}</button><div class="mapbox"></div></div>
         <div id="h-rules"></div>
+        <div id="h-net"></div>
       </div>
       <div class="hud-br"><div id="h-weapons"></div><div id="h-skill"><div class="sk-ring"><img class="sk-ic" src="${pixUrl('star', 3)}" alt=""><em></em></div><div class="sk-txt"><b></b><kbd></kbd></div></div></div>
       <div id="h-prompt"></div>
       <div id="h-hub"></div>
       <div id="h-fps"></div>`;
     $('.p1slot', el).appendChild(this.p1.el);
-    $('.p2slot', el).appendChild(this.p2.el);
+    for (const c of this.others) $('.p2slot', el).appendChild(c.el);
     $('.mapbox', el).appendChild(this.map.el);
     $('#h-pause', el).addEventListener('click', () => this.game.togglePause());
     el.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest('[data-hud]') as HTMLElement | null;
       if (b?.dataset.hud === 'coop') { this.game.toggleCoop(); this.cache.delete('hub'); }
+      if (b?.dataset.hud === 'online') this.game.ui.openPanel('online');
     });
   }
 
@@ -137,14 +141,21 @@ export class Hud {
   reset(): void { this.cache.clear(); }
 
   update(dt: number): void {
-    const g = this.game, w = g.world, p = w.players[0];
+    const g = this.game, w = g.world, li = g.localIndex, p = w.players[li] ?? w.players[0];
     if (!p) return;
     const run = w.mode === 'run';
     const coop = w.players.length > 1;
-    this.p1.update(g, p, coop);
-    const p2 = w.players[1];
-    this.p2.el.style.display = p2 ? '' : 'none';
-    if (p2) this.p2.update(g, p2, coop);
+    // en ligne : la grande carte est MON joueur, les autres en petit avec leur pseudo
+    const names = g.net.names();
+    const tagOf = (q: Player) => (names ? names[q.index] ?? `J${q.index + 1}` : coop ? `J${q.index + 1}` : '');
+    this.p1.update(g, p, tagOf(p));
+    const rest = w.players.filter((q) => q !== p);
+    this.others.forEach((c, i) => {
+      const q = rest[i];
+      c.el.style.display = q ? '' : 'none';
+      if (q) c.update(g, q, tagOf(q));
+    });
+    this.net(dt);
 
     this.set('#h-coins', String(w.coins));
     this.set('#h-gems', String(run ? w.gems : g.save.gems));
@@ -159,7 +170,7 @@ export class Hud {
     this.skill(p, dt);
     this.rules();
     this.boss(dt);
-    this.prompt(p, w.focus[0] ?? null);
+    this.prompt(p, w.focus[li] ?? null);
     this.hub();
 
     // minimap : 10 Hz
@@ -295,9 +306,34 @@ export class Hud {
     if (w.mode !== 'hub') { this.set('#h-hub', ''); return; }
     const coop = w.players.length > 1;
     const touch = g.input.device === 'touch';
+    const net = g.net;
+    if (net.active) {
+      const host = net.role === 'host';
+      this.set('#h-hub', `<div class="hub-hint">En ligne · Mode : <b class="hub-mode">${esc(MODE_NAMES[w.hubMode])}</b> · Approche un héros pour le choisir · ${host ? 'Entre dans le portail pour lancer la partie' : 'L\'hôte lance la partie'}</div>
+        <div class="hub-coop"><button class="hbtn coop online" data-hud="online">Salon <b>${esc(net.code)}</b></button><span class="coop-keys">${net.lobby().length}/4 joueurs</span></div>`);
+      return;
+    }
     const html = `<div class="hub-hint">Mode : <b class="hub-mode">${esc(MODE_NAMES[w.hubMode])}</b> (tableau des défis) · Approche un héros pour le choisir · Portail pour partir</div>
       <div class="hub-coop"><button class="hbtn coop" data-hud="coop">${coop ? '− Retirer J2' : '+ Joueur 2'}${touch ? '' : ' <kbd>C</kbd>'}</button>
+      <button class="hbtn coop online" data-hud="online">Multijoueur en ligne</button>
       ${coop ? '<span class="coop-keys">J2 : flèches · <kbd>Entrée</kbd> interagir · <kbd>Ctrl dr.</kbd> tirer · <kbd>Maj dr.</kbd> compétence · <kbd>/</kbd> arme — ou une manette</span>' : '<span class="coop-keys">Coop locale : clavier partagé ou manette</span>'}</div>`;
     this.set('#h-hub', html);
+  }
+
+  // ------------------------------------------------------------------ en ligne : joueurs du salon et ping
+  private netT = 0;
+  private net(dt: number): void {
+    const g = this.game, net = g.net;
+    if (!net.active) { this.set('#h-net', ''); return; }
+    if ((this.netT -= dt) > 0) return;
+    this.netT = 0.5;
+    const li = g.localIndex;
+    const rows = net.lobby().map((e, i) => {
+      const hero = R.heroes.get(e.hero);
+      const ping = e.host ? 'hôte' : i === li && net.role === 'guest' ? `${net.ping} ms` : `${e.ping} ms`;
+      const cls = e.host ? '' : (i === li ? net.ping : e.ping) > 180 ? 'bad' : (i === li ? net.ping : e.ping) > 90 ? 'mid' : 'good';
+      return `<div class="nrow ${i === li ? 'me' : ''}">${hero ? `<span data-icon="${hero.sprite}" data-fit="14"></span>` : ''}<b>${esc(e.name)}</b><em class="${cls}">${ping}</em></div>`;
+    }).join('');
+    this.set('#h-net', `<div class="nhead">Salon ${esc(net.code)}</div>${rows}`);
   }
 }

@@ -58,6 +58,23 @@ export class ChoiceView {
     if (!show) return;
     if (this.armedT > 0) { this.armedT -= dt; if (this.armedT <= 0) this.el.classList.add('ready'); }
     this.pollPad();
+    this.syncVotes();
+  }
+
+  /** En ligne : pseudos des joueurs qui votent pour chaque carte. */
+  private votesKey = '';
+  private syncVotes(): void {
+    const votes = this.game.net.active ? this.game.net.votes() : [];
+    const key = JSON.stringify(votes);
+    if (key === this.votesKey) return;
+    this.votesKey = key;
+    $$('.rcard', this.el).forEach((b, i) => {
+      let tag = b.querySelector('.rc-votes') as HTMLElement | null;
+      const names = votes.filter(([k]) => k === i).map(([, n]) => n);
+      if (!names.length) { tag?.remove(); return; }
+      if (!tag) { tag = document.createElement('span'); tag.className = 'rc-votes'; b.appendChild(tag); }
+      tag.textContent = '✋ ' + names.join(', ');
+    });
   }
 
   private render(): void {
@@ -86,6 +103,8 @@ export class ChoiceView {
     const help = touch ? 'Touche une carte, puis touche-la de nouveau pour valider'
       : g.input.device === 'pad' ? '◀ ▶ pour choisir · Ⓐ pour valider'
       : `<kbd>1</kbd>–<kbd>${this.count}</kbd> ou <kbd>←</kbd> <kbd>→</kbd> puis <kbd>Entrée</kbd> · clic pour valider`;
+    const net = g.net.role;
+    const netHelp = net === 'guest' ? '<b class="net-vote">En ligne : ton choix est un vote, l\'hôte valide.</b> ' : net === 'host' ? '<b class="net-vote">En ligne : tu valides pour tout le monde (les votes s\'affichent sur les cartes).</b> ' : '';
     this.el.className = `on ${c.kind}`;
     this.el.innerHTML = `
       <div class="ch-head"><h2>${esc(c.title)}</h2><div class="sub">${esc(c.sub)}${this.multi === c ? ` <b class="picks">Encore ${c.picks} à choisir</b>` : ''}</div></div>
@@ -102,8 +121,9 @@ export class ChoiceView {
           <kbd>${i + 1}</kbd></button>`;
       }).join('')}</div>
       ${took.length ? `<div class="ch-active"><span class="lbl">${isRule ? 'Déjà actifs' : 'Actifs'}</span>${took.map((i) => `<span class="ric ${i.def.kind} ${i.def.flavor ?? ''}" data-tip="${esc(`<b>${esc(i.def.name)}</b>${i.stacks > 1 ? ' ×' + i.stacks : ''}<br>${esc(i.def.desc)}<br><i>${esc(modKindLabel(i.def))}</i>`)}"><span data-icon="${i.def.icon}" data-fit="18"></span>${i.stacks > 1 ? `<i>×${i.stacks}</i>` : ''}</span>`).join('')}</div>` : ''}
-      <div class="ch-help">${help}</div>`;
+      <div class="ch-help">${netHelp}${help}</div>`;
     fillIcons(this.el);
+    this.votesKey = '';
     this.busy = false;
     this.touchArmed = -1;
     this.armedT = ARM_DELAY;
@@ -132,6 +152,8 @@ export class ChoiceView {
     window.setTimeout(() => {
       this.busy = false;
       if (w.choice === c && c.options[i]) w.pick(i);
+      // invité : le vote est envoyé, les cartes restent choisissables (on peut changer d'avis)
+      if (this.game.net.role === 'guest') $$('.rcard', this.el).forEach((b) => b.classList.remove('picked', 'dismiss'));
     }, 480);
   }
 

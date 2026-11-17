@@ -35,6 +35,7 @@ export class Menus {
     el.addEventListener('input', (e) => this.onInput(e.target as HTMLInputElement));
     el.addEventListener('keydown', (e) => {
       if ((e.target as HTMLElement).id === 'seed' && e.code === 'Enter') { e.preventDefault(); this.act('play', e.target as HTMLElement); }
+      if ((e.target as HTMLElement).id === 'netcode' && e.code === 'Enter') { e.preventDefault(); this.act('net-join', e.target as HTMLElement); }
     });
   }
 
@@ -89,6 +90,7 @@ export class Menus {
             <button class="btn" data-a="howto">Comment jouer</button>
             <button class="btn" data-a="intro">L'histoire</button>
           </div>
+          <button class="btn" data-a="online">Multijoueur en ligne</button>
         </div>
         ${s.stats.runs || s.gems ? `<div class="title-stats">${pix('gem', 1)} ${s.gems} · Runs : ${s.stats.runs} · Victoires : ${s.stats.wins}${s.stats.best ? ` · Record : ${esc(s.stats.best)}` : ''}${s.records?.endless ? ` · Infini : ${s.records.endless.score}` : ''}</div>` : ''}
       </div>
@@ -102,15 +104,18 @@ export class Menus {
     const acq = (k: ModifierDef['kind']) => w.rules.list.filter((i) => i.def.kind === k).sort((a, b) => a.order - b.order);
     const rules = acq('rule'), syn = acq('synergy'), pas = acq('passive');
     const total = rules.length + syn.length + pas.length;
+    const net = this.game.net, online = net.active;
     this.mount('pause', 'pause', `
       <div class="box pause-box">
-        <div class="bh"><h2>Pause</h2>${run ? `<div class="sub">${w.worldNum}-${w.floorNum} · ${esc(WORLD_NAMES[w.worldNum] ?? '')}${w.loop ? ` · Boucle ${w.loop + 1}` : ''}</div>` : '<div class="sub">Le Hall</div>'}</div>
+        <div class="bh"><h2>${online ? 'Menu' : 'Pause'}</h2>${run ? `<div class="sub">${w.worldNum}-${w.floorNum} · ${esc(WORLD_NAMES[w.worldNum] ?? '')}${w.loop ? ` · Boucle ${w.loop + 1}` : ''}</div>` : '<div class="sub">Le Hall</div>'}
+          ${online ? '<div class="sub net-warn">En ligne : la partie continue pendant que ce menu est ouvert !</div>' : ''}</div>
         <div class="pause-cols">
           <div class="menu-col">
             <button class="btn big" data-a="resume" data-autofocus>Reprendre</button>
             <button class="btn" data-a="options">Options</button>
             <button class="btn" data-a="howto">Comment jouer</button>
-            ${run ? '<button class="btn danger" data-a="abandon">Abandonner la run</button>' : '<button class="btn" data-a="title">Écran titre</button>'}
+            ${online ? `<button class="btn" data-a="online">Salon ${esc(net.code)}</button><button class="btn danger" data-a="net-leave">${net.role === 'host' ? 'Fermer le salon' : 'Quitter le salon'}</button>` : ''}
+            ${online && net.role === 'guest' ? '' : run ? '<button class="btn danger" data-a="abandon">Abandonner la run</button>' : online ? '' : '<button class="btn" data-a="title">Écran titre</button>'}
             ${run ? `<div class="seedrow">Seed <b class="seedv">${esc(w.seed)}</b><button class="btn mini" data-a="copy" data-v="${esc(w.seed)}">Copier</button></div>` : ''}
           </div>
           <div class="rules-col">
@@ -248,9 +253,11 @@ export class Menus {
           </div>
         </div>
         <div class="row end-actions">
+          ${g.net.role === 'guest' ? `<div class="net-wait">En attente de l'hôte (continuer, rejouer ou revenir au hall)…</div>
+          <button class="btn danger" data-a="net-leave" data-autofocus>Quitter le salon</button>` : `
           ${s.win && s.mode !== 'endless' ? '<button class="btn big" data-a="loop" data-autofocus>Continuer en boucle</button>' : ''}
           <button class="btn ${s.win ? '' : 'big'}" data-a="hub" ${s.win ? '' : 'data-autofocus'}>Retour au hall</button>
-          <button class="btn" data-a="retry">Rejouer la seed</button>
+          <button class="btn" data-a="retry">Rejouer la seed</button>`}
         </div>
       </div>`);
     this.gem = { on: true, t: 0, to: s.gems };
@@ -305,11 +312,57 @@ export class Menus {
       body = head('Codex', '') + this.codexBody();
     } else if (type === 'modes') {
       body = head('Tableau des défis', 'Choisis ton mode, puis entre dans le portail.') + this.modesBody();
+    } else if (type === 'online') {
+      body = `<div class="ph"><h2>Multijoueur en ligne</h2><button class="x" data-a="close" aria-label="Fermer">✕</button></div>
+        <div class="sub">2 à 4 joueurs sur des appareils différents, sans compte : seul ton pseudo est partagé.</div>` + this.onlineBody();
     }
     const keepFocus = (document.activeElement as HTMLElement | null)?.dataset?.id;
     this.mount('panel', `panel panel-${type}`, `<div class="box wide panel-box" role="dialog" aria-label="${type}">${body}</div>`, () => this.closePanel());
     if (keepFocus) ($(`[data-id="${keepFocus}"]`, this.el) as HTMLElement | null)?.focus({ preventScroll: true });
     else if (g.input.device !== 'touch') (($('.panel-box [data-autofocus]', this.el) ?? $('.card, .filt, .x', this.el)) as HTMLElement | null)?.focus({ preventScroll: true });
+  }
+  /** Brouillons des champs du panneau en ligne (survivent aux rafraîchissements). */
+  private netDraft = { name: '', code: '' };
+  private onlineBody(): string {
+    const g = this.game, net = g.net, w = g.world;
+    const ni = $('#netname', this.el) as HTMLInputElement | null, ci = $('#netcode', this.el) as HTMLInputElement | null;
+    if (ni) this.netDraft.name = ni.value;
+    if (ci) this.netDraft.code = ci.value;
+    const err = net.error ? `<div class="net-err" role="alert">${esc(net.error)}</div>` : '';
+    if (net.status === 'connecting') {
+      return `<div class="pscroll net-box"><div class="net-status"><span class="spin" aria-hidden="true"></span>Connexion en cours…</div>${err}</div>`;
+    }
+    if (net.status === 'idle') {
+      const name = this.netDraft.name || net.name;
+      return `<div class="pscroll net-box">
+        <label class="nfield"><span>Ton pseudo</span><input id="netname" maxlength="16" value="${esc(name)}" autocomplete="off" spellcheck="false"></label>
+        <div class="net-cols">
+          <div class="net-card"><h3>Créer un salon</h3><p>Tu es l'hôte : la partie tourne sur ton appareil. Partage ensuite le code ou le lien.</p>
+            <button class="btn big" data-a="net-host" data-autofocus>Créer un salon</button></div>
+          <div class="net-card"><h3>Rejoindre</h3><p>Entre le code donné par l'hôte (5 caractères).</p>
+            <input id="netcode" class="codein" maxlength="40" placeholder="CODE" value="${esc(this.netDraft.code)}" autocomplete="off" spellcheck="false" aria-label="Code du salon">
+            <button class="btn big" data-a="net-join">Rejoindre</button></div>
+        </div>${err}
+        <p class="net-note">Connexion pair-à-pair (WebRTC). Le serveur public PeerJS sert seulement à mettre les appareils en relation ; seuls ton pseudo, tes commandes et l'état de la partie circulent.</p></div>`;
+    }
+    const host = net.status === 'host';
+    const lobby = net.lobby();
+    const rows = lobby.map((e, i) => {
+      const hero = R.heroes.get(e.hero);
+      const ping = e.host ? 'Hôte' : (i === g.localIndex && net.role === 'guest' ? net.ping : e.ping) + ' ms';
+      return `<div class="net-row ${i === g.localIndex ? 'me' : ''}">${hero ? `<span class="ic" data-icon="${hero.sprite}" data-fit="28"></span>` : ''}<b>${esc(e.name)}${i === g.localIndex ? ' <i>(toi)</i>' : ''}</b><em>${esc(hero?.name ?? '')}</em><small>${ping}</small></div>`;
+    }).join('') + Array.from({ length: Math.max(0, 4 - lobby.length) }, () => '<div class="net-row empty"><b>Place libre</b></div>').join('');
+    const modes = host
+      ? `<div class="filters net-modes">${(['story', 'endless', 'daily'] as RunMode[]).map((m) => `<button class="filt ${w.hubMode === m ? 'on' : ''}" data-a="net-mode" data-v="${m}" aria-pressed="${w.hubMode === m}">${esc(MODE_NAMES[m])}</button>`).join('')}</div>`
+      : `<div class="net-note">Mode choisi par l'hôte : <b>${esc(MODE_NAMES[w.hubMode])}</b></div>`;
+    return `<div class="pscroll net-box">
+      <div class="net-code"><small>Code du salon</small><b>${esc(net.code)}</b>
+        <button class="btn mini" data-a="copy" data-v="${esc(net.code)}">Copier</button><button class="btn mini" data-a="net-link">Copier le lien</button></div>
+      <h3>Joueurs (${lobby.length}/4)</h3><div class="net-list">${rows}</div>
+      <p class="net-note">Chacun choisit son héros en marchant vers une statue du hall. Choix d'édit : l'hôte valide, les autres votent.</p>
+      ${modes}
+      <div class="row">${host ? `<button class="btn big" data-a="net-start" data-autofocus ${w.mode !== 'hub' ? 'disabled' : ''}>Lancer la partie</button>` : '<div class="net-wait">L\'hôte lancera la partie.</div>'}
+        <button class="btn danger" data-a="net-leave">${host ? 'Fermer le salon' : 'Quitter le salon'}</button></div>${err}</div>`;
   }
   private modesBody(): string {
     const g = this.game, s = g.save, rec = s.records ?? {}, cur = g.world.hubMode;
@@ -420,6 +473,26 @@ export class Menus {
       case 'no': this.closeModal(); this.autofocus(); break;
       case 'close': this.closePanel(); break;
       case 'filter': this.codexFilter = b.dataset.v ?? 'all'; this.openPanel('codex'); ($(`.filt[data-v="${this.codexFilter}"]`, this.el) as HTMLElement | null)?.focus({ preventScroll: true }); break;
+      case 'online':
+        if (g.state === 'title') g.toHub();
+        else if (g.state !== 'play') g.setState('play');
+        this.openPanel('online');
+        break;
+      case 'net-host':
+      case 'net-join': {
+        const name = ($('#netname', this.el) as HTMLInputElement | null)?.value;
+        if (name !== undefined) g.net.setName(name);
+        g.audio.unlock();
+        if (a === 'net-host') void g.net.create();
+        else void g.net.join(($('#netcode', this.el) as HTMLInputElement | null)?.value ?? '');
+        break;
+      }
+      case 'net-leave': g.net.leave(g.net.role === 'host' ? 'Salon fermé.' : 'Tu as quitté le salon.'); break;
+      case 'net-mode': g.setMode(b.dataset.v as RunMode); g.net.host?.broadcastLobby(); this.openPanel('online'); break;
+      case 'net-start': if (g.net.role === 'host' && w.mode === 'hub') { this.closePanel(); g.startRun(); } break;
+      case 'net-link':
+        copyText(g.net.link()).then((ok) => { b.textContent = ok ? 'Lien copié !' : 'Échec'; replay(b, 'flash'); window.setTimeout(() => { if (b.isConnected) b.textContent = 'Copier le lien'; }, 1400); });
+        break;
       case 'buy': this.buy(b); break;
       case 'pet': this.pet(b); break;
     }

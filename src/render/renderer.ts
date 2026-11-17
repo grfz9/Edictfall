@@ -127,6 +127,10 @@ export class Renderer {
   /** Multiplicateur de tremblement (option joueur). */
   shakeOpt = 1;
   showNumbers = true;
+  /** En ligne : la caméra suit ce joueur (index), -1 = tous les joueurs. */
+  follow = -1;
+  /** En ligne : pseudo affiché au-dessus de chaque joueur (par index). */
+  nameTags: string[] | null = null;
   /** Mode performance : 'auto' bascule seul si les FPS tombent sous 45. */
   perfMode: 'auto' | 'on' | 'off' = 'auto';
   perf = false;
@@ -409,7 +413,7 @@ export class Renderer {
       for (const a of this.amb) a.on = false;
       this.noCorpse = true;
       for (const id of [...this.pstate.keys()]) if (!w.players.some((p) => p.id === id)) this.pstate.delete(id);
-      const l = w.lead();
+      const l = (this.follow >= 0 ? w.players[this.follow] : undefined) ?? w.lead();
       if (l) { this.cam.x = l.x; this.cam.y = l.y; }
     }
   }
@@ -444,7 +448,9 @@ export class Renderer {
     const zoom = (zd / dpr) * w.mods.zoom;
     this.cam.zoom = zoom;
     let tx = 0, ty = 0, n = 0;
-    for (const p of w.players) if (!p.downed) { tx += p.x + Math.cos(p.aim) * (w.players.length > 1 ? 0 : 12); ty += p.y + Math.sin(p.aim) * (w.players.length > 1 ? 0 : 12); n++; }
+    const me = this.follow >= 0 ? w.players[this.follow] : undefined;
+    if (me) { tx = me.x + (me.downed ? 0 : Math.cos(me.aim) * 12); ty = me.y + (me.downed ? 0 : Math.sin(me.aim) * 12); n = 1; }
+    else for (const p of w.players) if (!p.downed) { tx += p.x + Math.cos(p.aim) * (w.players.length > 1 ? 0 : 12); ty += p.y + Math.sin(p.aim) * (w.players.length > 1 ? 0 : 12); n++; }
     if (n) {
       const k = 1 - Math.exp(-9 * dt);
       this.cam.x += (tx / n - this.cam.x) * k; this.cam.y += (ty / n - this.cam.y) * k;
@@ -858,7 +864,7 @@ export class Renderer {
     const dk = w.mods.darkness;
     this.dark.visible = dk > 0;
     if (dk > 0) {
-      const l = w.lead();
+      const l = (this.follow >= 0 ? w.players[this.follow] : undefined) ?? w.lead();
       const sp = this.worldToScreen(l.x, l.y);
       this.dark.position.set(sp.x, sp.y);
       this.dark.scale.set((dk * zoom) / 64);
@@ -1001,6 +1007,9 @@ export class Renderer {
     const s = this.get(p.id * 4, this.ents);
     const sc = p.mods.playerScale;
     const ps = this.pst(p);
+    // en ligne : pseudo au-dessus de chaque joueur (le sien en jaune)
+    const tag = this.nameTags?.[p.index];
+    if (tag) this.label(tag, p.x, p.y - 20 * sc, p.index === this.follow ? 0xffd23a : 0x9ad8ff, 1, p.downed ? 0.5 : 0.85);
     if (p.downed) {
       this.setTex(s, p.hero.sprite);
       s.position.set(p.x, p.y + 3); s.rotation = Math.PI / 2; s.tint = 0x666677; s.alpha = 0.8; s.zIndex = p.y - 8; s.scale.set(sc);

@@ -10,6 +10,7 @@ import { Renderer } from './render/renderer';
 import { Input } from './input/input';
 import { AudioSys } from './audio/audio';
 import { UI } from './ui/ui';
+import { Online } from './net/online';
 
 // Tout fichier déposé dans src/content/ est chargé automatiquement et s'enregistre lui-même.
 import.meta.glob('./content/**/*.ts', { eager: true });
@@ -31,6 +32,8 @@ export class Game {
   coopHero: string | null = null;
   /** Pilote automatique (tests). */
   bot = false;
+  /** Multijoueur en ligne (inactif tant qu'aucun salon n'est créé / rejoint). */
+  net = new Online(this);
   fps = 60;
   private acc = 0;
   private last = 0;
@@ -51,7 +54,9 @@ export class Game {
     this.last = performance.now();
     const loop = (now: number) => { this.frame(now); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
-    document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'play' && this.world.mode === 'run') this.setState('pause'); });
+    // en ligne, la partie ne se met jamais en pause toute seule (les autres joueurs continuent)
+    document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'play' && this.world.mode === 'run' && !this.net.active) this.setState('pause'); });
+    this.net.autoJoinFromUrl();
   }
 
   applyOptions(): void {
@@ -68,23 +73,31 @@ export class Game {
   setState(s: Game['state']): void {
     this.state = s;
     this.input.setTouchActive(s === 'play');
-    this.audio.setPaused(s === 'pause');
+    this.audio.setPaused(s === 'pause' && !this.net.active);
     this.ui.onState(s);
   }
+  /** Index du joueur contrôlé sur cet appareil (0 hors ligne ; en ligne, l'invité a le sien). */
+  get localIndex(): number { return this.net.localIndex; }
   togglePause(): void {
-    if (this.state === 'play' && !this.world.choice) this.setState('pause');
+    // en ligne : le menu s'ouvre sans figer la partie
+    if (this.state === 'play' && (!this.world.choice || this.net.active)) this.setState('pause');
     else if (this.state === 'pause') this.setState('play');
   }
   toHub(): void {
+    if (this.net.role === 'guest') { this.setState('play'); return; }
     this.world.startHub();
     this.coopHero = null;
+    this.net.host?.onHub();
     this.setState('play');
   }
   startRun(seed?: string, mode: RunMode = this.world.hubMode): void {
     let s = (seed ?? this.seedText).trim().toUpperCase() || randomSeedString();
     if (mode === 'daily' && seed === undefined) s = this.dailySeed();
+    if (this.net.role === 'guest') return;
     const heroes = [this.world.players[0]?.hero.id ?? this.save.hero];
     if (this.coopHero) heroes.push(this.coopHero);
+    // en ligne : un héros par membre du salon, dans l'ordre des joueurs
+    if (this.net.host) heroes.splice(0, heroes.length, ...this.net.host.heroIds());
     this.world.startRun(s, heroes, mode);
     this.setState('play');
   }
@@ -121,7 +134,7 @@ export class Game {
   /** Ajoute/retire le joueur 2 dans le hall. */
   toggleCoop(): void {
     const w = this.world;
-    if (w.mode !== 'hub') return;
+    if (w.mode !== 'hub' || this.net.active) return;
     if (w.players.length > 1) { w.players.length = 1; this.coopHero = null; return; }
     const p1 = w.players[0];
     const hero = [...R.heroes.values()].find((h) => w.heroUnlocked(h) && h !== p1.hero) ?? p1.hero;
@@ -139,13 +152,15 @@ export class Game {
     this.audio.setIntensity(w.mode === 'run' ? w.rules.ofKind('rule').length + (w.boss ? 2 : 0) : 0);
   }
 
-  private frame(now: number): void {
+  /** Une image : entrées → simulation → effets → rendu → interface. Publique pour l'onglet hôte masqué et les tests. */
+  frame(now: number): void {
     const dt = Math.max(0, Math.min(0.1, (now - this.last) / 1000));
     this.last = now;
     this.fps += (1 / Math.max(dt, 0.001) - this.fps) * 0.05;
     const w = this.world;
 
-    if (this.state === 'play') {
+    if (this.net.active && this.state !== 'title') this.net.frame(dt);
+    else if (this.state === 'play') {
       const origins = w.players.map((p) => this.renderer.worldToScreen(p.x, p.y));
       const inputs = this.input.poll(dt, w.players.length, origins, !!w.focus[0]);
       // Les fronts montants (ramasser, compétence, changer d'arme, clic) sont conservés jusqu'à ce qu'un pas
@@ -193,7 +208,9 @@ export class Game {
     }
     w.fx.length = 0;
     this.syncMusic();
-    this.renderer.render(w, this.state === 'pause' ? 0 : dt);
+    this.renderer.follow = this.net.active ? this.localIndex : -1;
+    this.renderer.nameTags = this.net.names();
+    this.renderer.render(w, this.state === 'pause' && !this.net.active ? 0 : dt);
     this.ui.frame(dt);
     this.input.endFrame();
   }

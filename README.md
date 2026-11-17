@@ -52,6 +52,19 @@ Puis ouvre l'adresse affichée (sur téléphone : l'adresse réseau, même Wi-Fi
 
 **Seed** : tape une seed sur l'écran titre pour rejouer (et partager) exactement le même donjon. Elle est affichée en pause et en fin de run.
 
+## Multijoueur en ligne
+
+2 à 4 joueurs, chacun sur son appareil (PC, mobile, manette), sans compte ni serveur à nous.
+
+- **Créer un salon** : écran titre ou Hall → **Multijoueur en ligne** → pseudo → **Créer un salon**. Un code de 5 caractères s'affiche (ex. `K7QRM`), avec **Copier** et **Copier le lien**.
+- **Rejoindre** : même panneau → saisir le code → **Rejoindre**. Ou ouvrir directement le lien `…/?salon=CODE`.
+- **Dans le Hall** : chacun choisit son héros en marchant vers une statue ; la liste des joueurs (pseudo, héros, ping) est dans le panneau et en haut à droite. L'hôte choisit le mode (Histoire, Infini, Défi) et lance la partie (bouton **Lancer la partie** ou portail).
+- **En partie** : chaque caméra suit son propre joueur, pseudos au-dessus des personnages. Choix d'édit : l'hôte valide, les invités votent (leur pseudo s'affiche sur la carte). Mort / réanimation comme en coop locale. Le menu (Échap / Start) ne met **pas** la partie en pause.
+- **Déconnexions** : un invité qui part est retiré proprement ; si l'hôte part, les invités sont prévenus et reviennent au Hall. On ne peut rejoindre que pendant que l'hôte est au Hall.
+- Les gemmes gagnées pendant une partie en ligne sont créditées à chaque joueur.
+
+Technique : WebRTC pair-à-pair via [PeerJS](https://peerjs.com/) (son serveur de signalisation public sert seulement à mettre les appareils en relation). **Hôte autoritaire** : la simulation tourne chez l'hôte, les invités envoient leurs commandes et reçoivent ~20 instantanés/s (delta-encodés, positions interpolées). Seuls le pseudo, les commandes et l'état du jeu circulent. Code dans `src/net/` ; `?net=local` remplace WebRTC par un `BroadcastChannel` pour tester à deux onglets du même navigateur sans Internet.
+
 ## Ce qu'il y a dedans
 
 | | |

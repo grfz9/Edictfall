@@ -122,6 +122,8 @@ export class World {
   private pending = 0;
   /** Appelé quand la sauvegarde doit être écrite. */
   persist: () => void = () => {};
+  /** Ce joueur peut-il dépenser les gemmes de la sauvegarde ? (en ligne : seulement le joueur de l'hôte) */
+  canSpend: (p: Player) => boolean = () => true;
   /** Mode de la run en cours / mode choisi au hall pour la prochaine run. */
   runMode: RunMode = 'story';
   hubMode: RunMode = 'story';
@@ -334,7 +336,7 @@ export class World {
       tint: unlocked ? 0xffffff : 0x333344, data: { hero: h.id },
       use: (_ctx, p, self) => {
         if (!this.heroUnlocked(h)) {
-          if (this.save.gems < h.cost) {
+          if (this.save.gems < h.cost || !this.canSpend(p)) {
             this.fx.push({ t: 'text', x, y: y - 16, s: 'GEMMES INSUFFISANTES', color: 0xff6677 });
             this.fx.push({ t: 'sfx', id: 'deny' });
             return false;
@@ -574,7 +576,7 @@ export class World {
     this.floor = generateFloor(this.rng.dungeon.fork(`${this.loop}-${this.worldNum}-${this.floorNum}`), plan, theme);
     const c = roomCenter(this.floor.start);
     this.players.forEach((p, i) => {
-      p.x = c.x + (i ? 14 : 0); p.y = c.y; p.vx = p.vy = p.kx = p.ky = 0; p.status = {};
+      p.x = c.x + i * 14; p.y = c.y; p.vx = p.vy = p.kx = p.ky = 0; p.status = {};
       if (p.downed) { p.downed = false; p.hp = Math.max(1, Math.ceil(this.maxHp(p) / 2)); }
       this.addPet(p);
     });
